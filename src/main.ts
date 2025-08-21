@@ -10,10 +10,11 @@ async function bootstrap() {
     origin: [
       'https://processosniper.com.br',
       'https://www.processosniper.com.br',
-      'https://api.processosniper.com.br',
+      'https://api.processosniper.com.br'
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
+    exposedHeaders: ['Authorization']
   })
 
   app.useGlobalPipes(
