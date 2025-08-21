@@ -7,7 +7,12 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule)
 
   app.enableCors({
-    origin: process.env.FRONT_ORIGIN ?? true,
+    origin: [
+      'https://processosniper.com.br',
+      'https://www.processosniper.com.br',
+      'https://api.processosniper.com.br',
+    ],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   })
 
@@ -42,6 +47,6 @@ async function bootstrap() {
     },
   })
 
-  await app.listen(Number(process.env.PORT ?? 3000))
+  await app.listen(Number(process.env.PORT ?? 3000), '0.0.0.0')
 }
 bootstrap()
