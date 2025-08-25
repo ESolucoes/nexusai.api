@@ -5,7 +5,7 @@ COPY package*.json ./
 RUN npm ci
 COPY nest-cli.json tsconfig.json tsconfig.build.json ./
 COPY src ./src
-COPY data-source.ts ./data-source.ts
+
 RUN npm run build
 RUN npm prune --production
 
