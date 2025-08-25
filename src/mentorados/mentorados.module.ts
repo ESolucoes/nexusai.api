@@ -1,12 +1,17 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Mentorado } from './mentorado.entity';
-import { MentoradosService } from './mentorados.service';
-import { MentoradosController } from './mentorados.controller';
-import { MentoresModule } from '../mentores/mentores.module';
+import { Module, forwardRef } from '@nestjs/common'
+import { TypeOrmModule } from '@nestjs/typeorm'
+import { Mentorado } from './mentorado.entity'
+import { MentoradosService } from './mentorados.service'
+import { MentoradosController } from './mentorados.controller'
+import { MentoresModule } from '../mentores/mentores.module'
+import { ArquivosModule } from '../arquivos/arquivos.module'
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Mentorado]), MentoresModule],
+  imports: [
+    TypeOrmModule.forFeature([Mentorado]),
+    forwardRef(() => MentoresModule),
+    ArquivosModule,
+  ],
   providers: [MentoradosService],
   controllers: [MentoradosController],
   exports: [MentoradosService],

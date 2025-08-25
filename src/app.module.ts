@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { MailerModule } from '@nestjs-modules/mailer'
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter'
+import { ServeStaticModule } from '@nestjs/serve-static'
 import { join } from 'path'
 
 import { AutenticacaoModule } from './autenticacao/autenticacao.module'
@@ -11,10 +12,15 @@ import { VigenciasModule } from './vigencias/vigencias.module'
 import { MentoresModule } from './mentores/mentores.module'
 import { MentoradosModule } from './mentorados/mentorados.module'
 import { AgentesModule } from './agentes/agentes.module'
+import { ArquivosModule } from './arquivos/arquivos.module'
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ServeStaticModule.forRoot({
+      rootPath: process.env.UPLOADS_PUBLIC_DIR || join(process.cwd(), 'uploads/public'),
+      serveRoot: '/uploads',
+    }),
     TypeOrmModule.forRootAsync({
       useFactory: () => ({
         type: 'postgres',
@@ -48,13 +54,13 @@ import { AgentesModule } from './agentes/agentes.module'
         },
       }),
     }),
-
     AutenticacaoModule,
     UsuariosModule,
     VigenciasModule,
     MentoresModule,
     MentoradosModule,
     AgentesModule,
+    ArquivosModule,
   ],
 })
 export class AppModule {}

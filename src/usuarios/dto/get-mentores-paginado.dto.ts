@@ -16,6 +16,8 @@ export class MentorUsuarioResumoDto {
 
   @ApiProperty({ description: 'Quantidade de mentorados vinculados ao mentor' })
   mentorados: number
+
+  @ApiProperty({ nullable: true }) avatarUrl?: string | null
 }
 
 export class PaginatedMetaDto {

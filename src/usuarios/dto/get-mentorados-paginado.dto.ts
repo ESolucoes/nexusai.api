@@ -10,6 +10,7 @@ export class MentoradoUsuarioResumoDto {
   @ApiProperty({ enum: ['Executive', 'First Class'] }) tipo: 'Executive' | 'First Class';
   @ApiProperty() rg: string;
   @ApiProperty() cpf: string;
+  @ApiProperty({ nullable: true }) avatarUrl?: string | null;
 }
 
 export class PaginatedMetaDto {
