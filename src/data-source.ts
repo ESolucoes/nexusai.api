@@ -2,17 +2,17 @@ import 'dotenv/config'
 import 'reflect-metadata'
 import { DataSource } from 'typeorm'
 
-import { Usuario } from './src/usuarios/usuario.entity'
-import { CodigoRedefinicao } from './src/autenticacao/codigo-redefinicao.entity'
+import { Usuario } from './usuarios/usuario.entity'
+import { CodigoRedefinicao } from './autenticacao/codigo-redefinicao.entity'
 
-import { CriarUsuarios1710000000000 } from './src/migrations/1710000000000-CriarUsuarios'
-import { CriarCodigosRedefinicaoSenha1710000000001 } from './src/migrations/1710000000001-CriarCodigosRedefinicaoSenha'
-import { CriarVigencias1710000000002 } from './src/migrations/1710000000002-CriarVigencias'
-import { CriarMentores1710000000003 } from './src/migrations/1710000000003-CriarMentores'
-import { CriarMentorados1710000000004 } from './src/migrations/1710000000004-CriarMentorados'
-import { CriarChatTabelas1710000000005 } from './src/migrations/1710000000005-CriarTabelaChats'
-import { AdicionarAvatarUsuarios1710000000006 } from './src/migrations/1710000000006-AdicionarAvatarUsuarios'
-import { AdicionarCurriculoMentorados1710000000007 } from './src/migrations/1710000000007-AdicionarCurriculoMentorados'
+import { CriarUsuarios1710000000000 } from './migrations/1710000000000-CriarUsuarios'
+import { CriarCodigosRedefinicaoSenha1710000000001 } from './migrations/1710000000001-CriarCodigosRedefinicaoSenha'
+import { CriarVigencias1710000000002 } from './migrations/1710000000002-CriarVigencias'
+import { CriarMentores1710000000003 } from './migrations/1710000000003-CriarMentores'
+import { CriarMentorados1710000000004 } from './migrations/1710000000004-CriarMentorados'
+import { CriarChatTabelas1710000000005 } from './migrations/1710000000005-CriarTabelaChats'
+import { AdicionarAvatarUsuarios1710000000006 } from './migrations/1710000000006-AdicionarAvatarUsuarios'
+import { AdicionarCurriculoMentorados1710000000007 } from './migrations/1710000000007-AdicionarCurriculoMentorados'
 
 export default new DataSource({
   type: 'postgres',

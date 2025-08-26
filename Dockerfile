@@ -1,22 +1,37 @@
-FROM node:20-alpine AS builder
+# ---------- build ----------
+FROM node:20-alpine AS build
 WORKDIR /app
+
+# libs básicas p/ compatibilidade
 RUN apk add --no-cache libc6-compat
+
+# deps com cache
 COPY package*.json ./
 RUN npm ci
-COPY nest-cli.json tsconfig.json tsconfig.build.json ./
-COPY src ./src
-COPY data-source.ts ./data-source.ts
-RUN npm run build
-RUN npm prune --production
 
-FROM node:20-alpine AS runner
+# configs do Nest/TS
+COPY nest-cli.json tsconfig.json tsconfig.build.json ./
+
+# código fonte (inclui src/data-source.ts)
+COPY src ./src
+
+# build e “slim” de deps
+RUN npm run build
+RUN npm prune --omit=dev
+
+# ---------- runtime ----------
+FROM node:20-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
+ENV PORT=3000
+ENV NODE_OPTIONS="--experimental-global-webcrypto"
+
+# só o necessário pra rodar
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/node_modules ./node_modules
 COPY package*.json ./
-COPY --from=builder /app/data-source.ts ./data-source.ts
 COPY entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
+
 EXPOSE 3000
 CMD ["./entrypoint.sh"]
