@@ -17,11 +17,11 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "typeorm": "npx typeorm -d dist/data-source.js",
+    "typeorm": "npx typeorm -d ./dist/src/data-source.js",
     "migration:run": "npm run build && npm run typeorm -- migration:run",
     "migration:revert": "npm run build && npm run typeorm -- migration:revert",
     "migration:show": "npm run build && npm run typeorm -- migration:show",
-    "migration:generate": "npm run build && npx typeorm migration:generate ./src/migrations/$npm_config_name -d dist/data-source.js"
+    "migration:generate": "npm run build && npx typeorm migration:generate ./src/migrations/%npm_config_name% -d ./dist/src/data-source.js"
   },
   "dependencies": {
     "@nestjs-modules/mailer": "^2.0.2",
