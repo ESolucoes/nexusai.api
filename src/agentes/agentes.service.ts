@@ -24,13 +24,8 @@ export class AgentesService {
   }
 
   async getLatestSession(userId: string | null, assistantKey: AssistantKey) {
-    const where = userId
-      ? { userId, assistantKey }
-      : { userId: IsNull(), assistantKey }
-    const s = await this.sessions.findOne({
-      where,
-      order: { createdAt: 'DESC' },
-    })
+    const where = userId ? { userId, assistantKey } : { userId: IsNull(), assistantKey }
+    const s = await this.sessions.findOne({ where, order: { createdAt: 'DESC' } })
     if (!s) return { session: null, messages: [] }
     const msgs = await this.messages.find({ where: { sessionId: s.id }, order: { createdAt: 'ASC' } })
     return { session: s, messages: msgs }
@@ -96,15 +91,29 @@ export class AgentesService {
     return { sessions }
   }
 
+  /** Monta o conteúdo para a API do OpenAI */
   private buildMessageContent(content: string | undefined | null, files: Express.Multer.File[] | undefined) {
     const parts: any[] = []
     const text = (content ?? '').trim()
     if (text) parts.push({ type: 'text', text })
+
     for (const file of files ?? []) {
-      const b64 = file.buffer.toString('base64')
-      const dataUrl = `data:${file.mimetype};base64,${b64}`
-      parts.push({ type: 'image_url', image_url: { url: dataUrl } })
+      const isImage = String(file.mimetype || '').toLowerCase().startsWith('image/')
+      if (isImage) {
+        const b64 = file.buffer.toString('base64')
+        const dataUrl = `data:${file.mimetype};base64,${b64}`
+        parts.push({ type: 'image_url', image_url: { url: dataUrl } })
+      } else {
+        // Para documentos, adicionamos um marcador textual.
+        // (Se tiver storage e URL pública, substitua pela URL real.)
+        const humanSize = `${Math.ceil(file.size / 1024)} KB`
+        parts.push({
+          type: 'text',
+          text: `📎 Documento recebido: ${file.originalname} (${file.mimetype}, ${humanSize}).`
+        })
+      }
     }
+
     if (parts.length === 0) parts.push({ type: 'text', text: ' ' })
     return parts
   }

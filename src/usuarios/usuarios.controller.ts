@@ -148,26 +148,30 @@ export class UsuariosController {
           : null
 
       mentoradoCompleto = {
-        id: md.id,
-        tipo: md.tipo as any,
-        rg: md.rg,
-        cpf: md.cpf,
-        nomePai: md.nomePai,
-        nomeMae: md.nomeMae,
-        dataNascimento: md.dataNascimento,
-        rua: md.rua,
-        numero: md.numero,
-        complemento: md.complemento ?? null,
-        cep: md.cep,
-        cargoObjetivo: md.cargoObjetivo,
-        pretensaoClt: md.pretensaoClt,
-        pretensaoPj: md.pretensaoPj,
-        linkedin: md.linkedin,
-        curriculo,
-        criadoEm: md.criadoEm,
-        atualizadoEm: md.atualizadoEm,
-        mentor: mentorAninhado,
-      }
+  id: md.id,
+  tipo: md.tipo as any,
+
+  // 🔧 forçar string para casar com o DTO
+  rg: md.rg ?? '',
+  cpf: md.cpf ?? '',
+  nomePai: md.nomePai ?? '',
+  nomeMae: md.nomeMae ?? '',
+  dataNascimento: (md.dataNascimento as any) ?? '',
+  rua: md.rua ?? '',
+  numero: md.numero ?? '',
+  complemento: md.complemento ?? null, // se o DTO permitir null aqui, mantenha null
+  cep: md.cep ?? '',
+  cargoObjetivo: md.cargoObjetivo ?? '',
+  pretensaoClt: md.pretensaoClt ?? '',
+  pretensaoPj: md.pretensaoPj ?? '',
+  linkedin: md.linkedin ?? '',
+
+  curriculo,
+  criadoEm: md.criadoEm,
+  atualizadoEm: md.atualizadoEm,
+  mentor: mentorAninhado,
+}
+
     }
 
     const avatarUrl = u.avatarPath ? this.arquivosService.buildPublicUrl(u.avatarPath) : null

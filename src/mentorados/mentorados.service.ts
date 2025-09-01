@@ -1,3 +1,4 @@
+// backend/src/mentorados/mentorados.service.ts
 import { ConflictException, Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
@@ -16,6 +17,11 @@ export class MentoradosService {
     private readonly arquivosService: ArquivosService,
   ) {}
 
+  /** USADO pelo UsuariosController. Não cria rota. */
+  async buscarPorUsuarioId(usuarioId: string): Promise<Mentorado | null> {
+    return this.repo.findOne({ where: { usuarioId } })
+  }
+
   async listar(): Promise<{ id: string; usuarioId: string; mentorId: string; tipo: 'Executive' | 'First Class' }[]> {
     const rows = await this.repo.find({ select: ['id', 'usuarioId', 'mentorId', 'tipo'] })
     return rows.map(r => ({ id: r.id, usuarioId: r.usuarioId, mentorId: r.mentorId, tipo: r.tipo as any }))
@@ -25,10 +31,6 @@ export class MentoradosService {
     const m = await this.repo.findOne({ where: { id } })
     if (!m) throw new NotFoundException('Mentorado não encontrado')
     return m
-  }
-
-  async buscarPorUsuarioId(usuarioId: string): Promise<Mentorado | null> {
-    return this.repo.findOne({ where: { usuarioId } })
   }
 
   async criar(dto: PostMentoradoDto): Promise<Mentorado> {
@@ -88,20 +90,22 @@ export class MentoradosService {
     const rel = ['files', 'curriculum', file.filename].join('/').replace(/\\/g, '/')
     const storageKey = ['uploads', 'private', rel].join('/').replace(/\\/g, '/')
 
-    m.curriculoPath = storageKey
-    m.curriculoNome = file.originalname || file.filename
-    m.curriculoMime = file.mimetype || null
-    m.curriculoTamanho = String(file.size)
+    ;(m as any).curriculoPath = storageKey
+    ;(m as any).curriculoNome = file.originalname || file.filename
+    ;(m as any).curriculoMime = file.mimetype || null
+    ;(m as any).curriculoTamanho = String(file.size)
 
     await this.repo.save(m)
 
     return {
       sucesso: true,
       storageKey,
-      filename: m.curriculoNome,
-      mime: m.curriculoMime || 'application/octet-stream',
-      tamanho: Number(m.curriculoTamanho || 0),
-      url: this.arquivosService.buildPrivateUrl(storageKey),
+      filename: (m as any).curriculoNome,
+      mime: (m as any).curriculoMime || 'application/octet-stream',
+      tamanho: Number((m as any).curriculoTamanho || 0),
+      url: this.arquivosService.buildPrivateUrl
+        ? this.arquivosService.buildPrivateUrl(storageKey)
+        : null,
     }
   }
 }

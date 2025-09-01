@@ -29,7 +29,7 @@ export class MentoradosController {
     return this.service.listar()
   }
 
-  @Get(':id')
+    @Get(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @ApiOkResponse({ type: GetMentoradoIDDto })
@@ -40,23 +40,29 @@ export class MentoradosController {
       usuarioId: m.usuarioId,
       mentorId: m.mentorId,
       tipo: m.tipo as any,
-      rg: m.rg,
-      cpf: m.cpf,
-      nomePai: m.nomePai,
-      nomeMae: m.nomeMae,
-      dataNascimento: m.dataNascimento,
-      rua: m.rua,
-      numero: m.numero,
-      complemento: m.complemento ?? null,
-      cep: m.cep,
-      cargoObjetivo: m.cargoObjetivo,
-      pretensaoClt: m.pretensaoClt,
-      pretensaoPj: m.pretensaoPj,
-      linkedin: m.linkedin,
+
+      // 🔧 coalesce para string porque o DTO exige string
+      rg: m.rg ?? '',
+      cpf: m.cpf ?? '',
+      nomePai: m.nomePai ?? '',
+      nomeMae: m.nomeMae ?? '',
+      dataNascimento: (m.dataNascimento ?? '') as any,
+
+      rua: m.rua ?? '',
+      numero: m.numero ?? '',
+      complemento: m.complemento ?? null, // se o DTO permite null, mantém null
+      cep: m.cep ?? '',
+
+      cargoObjetivo: m.cargoObjetivo ?? '',
+      pretensaoClt: m.pretensaoClt ?? '',
+      pretensaoPj: m.pretensaoPj ?? '',
+      linkedin: m.linkedin ?? '',
+
       criadoEm: m.criadoEm,
       atualizadoEm: m.atualizadoEm,
     }
   }
+
 
   @Post()
   @ApiCreatedResponse({ type: Mentorado })

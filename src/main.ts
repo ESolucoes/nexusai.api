@@ -10,11 +10,14 @@ async function bootstrap() {
     origin: [
       'https://processosniper.com.br',
       'https://www.processosniper.com.br',
-      'https://api.processosniper.com.br'
+      'https://api.processosniper.com.br',
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
     ],
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     credentials: true,
-    exposedHeaders: ['Authorization']
+    allowedHeaders: ['Authorization', 'Content-Type', 'Accept'],
+    exposedHeaders: ['Authorization'],
   })
 
   app.useGlobalPipes(
@@ -48,6 +51,7 @@ async function bootstrap() {
     },
   })
 
+  // sem fallback manual de sendFile — nada de caminhos relativos aqui
   await app.listen(Number(process.env.PORT ?? 3000), '0.0.0.0')
 }
 bootstrap()

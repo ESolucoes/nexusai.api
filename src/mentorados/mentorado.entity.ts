@@ -1,96 +1,77 @@
-import { ApiProperty } from '@nestjs/swagger'
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  Index,
-  CreateDateColumn,
-  UpdateDateColumn,
-  Unique,
-  ManyToOne,
-  JoinColumn,
-} from 'typeorm'
-import { Mentor } from '../mentores/mentor.entity'
-
-export type MentoradoTipo = 'Executive' | 'First Class'
+// backend/src/mentorados/mentorado.entity.ts
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm'
 
 @Entity({ name: 'mentorados' })
-@Unique('UQ_mentorado_usuario', ['usuarioId'])
 export class Mentorado {
-  @ApiProperty()
   @PrimaryGeneratedColumn('uuid')
   id: string
 
-  @ApiProperty({ description: 'ID do usuário associado' })
-  @Index()
   @Column({ name: 'usuario_id', type: 'uuid' })
   usuarioId: string
 
-  @ApiProperty({ description: 'ID do mentor responsável' })
-  @Index()
   @Column({ name: 'mentor_id', type: 'uuid' })
   mentorId: string
 
-  @ManyToOne(() => Mentor, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'mentor_id' })
-  mentor: Mentor
-
-  @ApiProperty({ enum: ['Executive', 'First Class'] })
   @Column({ type: 'varchar', length: 20 })
-  tipo: MentoradoTipo
+  tipo: 'Executive' | 'First Class'
 
-  @ApiProperty() @Column({ type: 'varchar', length: 20 }) rg: string
-  @ApiProperty() @Column({ type: 'varchar', length: 14 }) cpf: string
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  rg?: string | null
 
-  @ApiProperty() @Column({ name: 'nome_pai', type: 'varchar', length: 120 }) nomePai: string
-  @ApiProperty() @Column({ name: 'nome_mae', type: 'varchar', length: 120 }) nomeMae: string
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  cpf?: string | null
 
-  @ApiProperty() @Column({ name: 'data_nascimento', type: 'date' }) dataNascimento: string
+  @Column({ name: 'nome_pai', type: 'varchar', length: 120, nullable: true })
+  nomePai?: string | null
 
-  @ApiProperty() @Column({ type: 'varchar', length: 150 }) rua: string
-  @ApiProperty() @Column({ type: 'varchar', length: 20 }) numero: string
-  @ApiProperty({ required: false, nullable: true })
+  @Column({ name: 'nome_mae', type: 'varchar', length: 120, nullable: true })
+  nomeMae?: string | null
+
+  @Column({ name: 'data_nascimento', type: 'date', nullable: true })
+  dataNascimento?: string | null
+
+  @Column({ type: 'varchar', length: 120, nullable: true })
+  rua?: string | null
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  numero?: string | null
+
   @Column({ type: 'varchar', length: 120, nullable: true })
   complemento?: string | null
-  @ApiProperty() @Column({ type: 'varchar', length: 10 }) cep: string
 
-  @ApiProperty({ description: 'Cargo ou objetivo' })
-  @Column({ name: 'cargo_objetivo', type: 'varchar', length: 120 })
-  cargoObjetivo: string
+  @Column({ type: 'varchar', length: 9, nullable: true })
+  cep?: string | null
 
-  @ApiProperty({ description: 'Pretensão CLT' })
-  @Column({ name: 'pretensao_clt', type: 'numeric', precision: 12, scale: 2, default: 0 })
-  pretensaoClt: string
+  @Column({ name: 'cargo_objetivo', type: 'varchar', length: 120, nullable: true })
+  cargoObjetivo?: string | null
 
-  @ApiProperty({ description: 'Pretensão PJ' })
-  @Column({ name: 'pretensao_pj', type: 'numeric', precision: 12, scale: 2, default: 0 })
-  pretensaoPj: string
+  @Column({ name: 'pretensao_clt', type: 'varchar', length: 30, nullable: true })
+  pretensaoClt?: string | null
 
-  @ApiProperty({ description: 'Link do LinkedIn' })
-  @Column({ name: 'linkedin', type: 'varchar', length: 255 })
-  linkedin: string
+  @Column({ name: 'pretensao_pj', type: 'varchar', length: 30, nullable: true })
+  pretensaoPj?: string | null
 
-  @ApiProperty({ required: false, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  linkedin?: string | null
+
+  /* ====== CAMPOS DO CURRÍCULO (FALTANDO NA TABELA) ====== */
   @Column({ name: 'curriculo_path', type: 'varchar', length: 255, nullable: true })
   curriculoPath?: string | null
 
-  @ApiProperty({ required: false, nullable: true })
   @Column({ name: 'curriculo_nome', type: 'varchar', length: 255, nullable: true })
   curriculoNome?: string | null
 
-  @ApiProperty({ required: false, nullable: true })
-  @Column({ name: 'curriculo_mime', type: 'varchar', length: 120, nullable: true })
+  @Column({ name: 'curriculo_mime', type: 'varchar', length: 100, nullable: true })
   curriculoMime?: string | null
 
-  @ApiProperty({ required: false, nullable: true })
+  // pode ser bigint na base; string aqui funciona também
   @Column({ name: 'curriculo_tamanho', type: 'bigint', nullable: true })
   curriculoTamanho?: string | null
+  /* ======================================================= */
 
-  @ApiProperty()
   @CreateDateColumn({ name: 'criado_em' })
   criadoEm: Date
 
-  @ApiProperty()
   @UpdateDateColumn({ name: 'atualizado_em' })
   atualizadoEm: Date
 }

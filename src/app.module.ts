@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 import { MailerModule } from '@nestjs-modules/mailer'
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter'
 import { ServeStaticModule } from '@nestjs/serve-static'
-import { join } from 'path'
+import { join, resolve } from 'path'
 
 import { AutenticacaoModule } from './autenticacao/autenticacao.module'
 import { UsuariosModule } from './usuarios/usuarios.module'
@@ -17,10 +17,16 @@ import { ArquivosModule } from './arquivos/arquivos.module'
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+
+    // estático público (APENAS uploads) — caminho ABSOLUTO
     ServeStaticModule.forRoot({
-      rootPath: process.env.UPLOADS_PUBLIC_DIR || join(process.cwd(), 'uploads/public'),
+      rootPath: resolve(process.env.UPLOADS_PUBLIC_DIR ?? join(process.cwd(), 'uploads', 'public')),
       serveRoot: '/uploads',
+      serveStaticOptions: {
+        index: false, // não tenta servir index.html automaticamente
+      },
     }),
+
     TypeOrmModule.forRootAsync({
       useFactory: () => ({
         type: 'postgres',
@@ -33,6 +39,7 @@ import { ArquivosModule } from './arquivos/arquivos.module'
         synchronize: false,
       }),
     }),
+
     MailerModule.forRootAsync({
       useFactory: () => ({
         transport: {
@@ -54,6 +61,7 @@ import { ArquivosModule } from './arquivos/arquivos.module'
         },
       }),
     }),
+
     AutenticacaoModule,
     UsuariosModule,
     VigenciasModule,
