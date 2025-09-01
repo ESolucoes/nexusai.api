@@ -14,17 +14,21 @@ import { MentoradosModule } from './mentorados/mentorados.module'
 import { AgentesModule } from './agentes/agentes.module'
 import { ArquivosModule } from './arquivos/arquivos.module'
 
+// Se você realmente tem esse módulo criado, mantenha.
+// Caso não exista, remova as 2 linhas relacionadas a ele.
+import { MentoradoAudioModule } from './mentorados-audio/mentorados-audio.module'
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
 
-    // estático público (APENAS uploads) — caminho ABSOLUTO
+    // estático público (APENAS uploads/public) — caminho ABSOLUTO
+    // IMPORTANTÍSSIMO: exclude '/uploads/private*' pra NÃO interceptar arquivos privados
     ServeStaticModule.forRoot({
       rootPath: resolve(process.env.UPLOADS_PUBLIC_DIR ?? join(process.cwd(), 'uploads', 'public')),
       serveRoot: '/uploads',
-      serveStaticOptions: {
-        index: false, // não tenta servir index.html automaticamente
-      },
+      exclude: ['/uploads/private*'],
+      serveStaticOptions: { index: false },
     }),
 
     TypeOrmModule.forRootAsync({
@@ -69,6 +73,9 @@ import { ArquivosModule } from './arquivos/arquivos.module'
     MentoradosModule,
     AgentesModule,
     ArquivosModule,
+
+    // Se não tiver criado, REMOVA essa linha:
+    MentoradoAudioModule,
   ],
 })
 export class AppModule {}
