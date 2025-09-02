@@ -1,32 +1,35 @@
-// src/app.module.ts
-import { Module } from '@nestjs/common'
-import { ConfigModule } from '@nestjs/config'
-import { TypeOrmModule } from '@nestjs/typeorm'
-import { MailerModule } from '@nestjs-modules/mailer'
-import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter'
-import { ServeStaticModule } from '@nestjs/serve-static'
-import { join, resolve } from 'path'
+﻿// src/app.module.ts
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join, resolve } from 'path';
 
-import { AutenticacaoModule } from './autenticacao/autenticacao.module'
-import { UsuariosModule } from './usuarios/usuarios.module'
-import { VigenciasModule } from './vigencias/vigencias.module'
-import { MentoresModule } from './mentores/mentores.module'
-import { MentoradosModule } from './mentorados/mentorados.module'
-import { AgentesModule } from './agentes/agentes.module'
-import { ArquivosModule } from './arquivos/arquivos.module'
-import { MentoradoAudioModule } from './mentorados-audio/mentorados-audio.module'
+import { AutenticacaoModule } from './autenticacao/autenticacao.module';
+import { UsuariosModule } from './usuarios/usuarios.module';
+import { VigenciasModule } from './vigencias/vigencias.module';
+import { MentoresModule } from './mentores/mentores.module';
+import { MentoradosModule } from './mentorados/mentorados.module';
+import { AgentesModule } from './agentes/agentes.module';
+import { ArquivosModule } from './arquivos/arquivos.module';
+import { MentoradoAudioModule } from './mentorados-audio/mentorados-audio.module';
 
-// NOVO MÓDULO (links de vagas)
-import { VagasLinksModule } from './vagas-links/vagas-links.module'
+// NOVOS
+import { VagasLinksModule } from './vagas-links/vagas-links.module';
+import { SsiModule } from './ssi/ssi.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
 
+    // Arquivos públicos (NÃO servir /uploads/private)
     ServeStaticModule.forRoot({
       rootPath: resolve(process.env.UPLOADS_PUBLIC_DIR ?? join(process.cwd(), 'uploads', 'public')),
       serveRoot: '/uploads',
-      exclude: ['/uploads/private*'],
+      // Impede servir qualquer coisa sob /uploads/private
+      exclude: ['/uploads/private'],
       serveStaticOptions: { index: false, redirect: false },
     }),
 
@@ -48,7 +51,7 @@ import { VagasLinksModule } from './vagas-links/vagas-links.module'
         transport: {
           host: process.env.MAIL_HOST,
           port: Number(process.env.MAIL_PORT ?? 587),
-          secure: process.env.MAIL_SECURE === 'true',
+        secure: process.env.MAIL_SECURE === 'true',
           auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS },
         },
         defaults: {
@@ -62,6 +65,7 @@ import { VagasLinksModule } from './vagas-links/vagas-links.module'
       }),
     }),
 
+    // módulos de domínio
     AutenticacaoModule,
     UsuariosModule,
     VigenciasModule,
@@ -69,11 +73,11 @@ import { VagasLinksModule } from './vagas-links/vagas-links.module'
     MentoradosModule,
     AgentesModule,
     ArquivosModule,
-
     MentoradoAudioModule,
 
-    // adicionar o módulo de vagas por último para manter padrão
+    // manter ordem final como você já usa
     VagasLinksModule,
+    SsiModule,
   ],
 })
 export class AppModule {}

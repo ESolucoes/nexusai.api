@@ -1,4 +1,4 @@
-// src/data-source.ts
+﻿// src/data-source.ts
 import 'dotenv/config'
 import 'reflect-metadata'
 import { DataSource } from 'typeorm'
@@ -14,10 +14,9 @@ import { CriarMentorados1710000000004 } from './migrations/1710000000004-CriarMe
 import { CriarChatTabelas1710000000005 } from './migrations/1710000000005-CriarTabelaChats'
 import { AdicionarAvatarUsuarios1710000000006 } from './migrations/1710000000006-AdicionarAvatarUsuarios'
 import { AdicionarCurriculoMentorados1710000000007 } from './migrations/1710000000007-AdicionarCurriculoMentorados'
-
-// NOVAS MIGRATIONS (seguindo a numeração solicitada)
 import { RemoverCurriculoMentorados1710000000008 } from './migrations/1710000000008-RemoverCurriculoMentorados'
 import { CriarVagaLinks1710000000009 } from './migrations/1710000000009-CriarVagaLinks'
+import { CriarSsi1710000000010 } from './migrations/1710000000010-CriarSsi'
 
 export default new DataSource({
   type: 'postgres',
@@ -38,6 +37,7 @@ export default new DataSource({
     AdicionarCurriculoMentorados1710000000007,
     RemoverCurriculoMentorados1710000000008,
     CriarVagaLinks1710000000009,
+    CriarSsi1710000000010,
   ],
   synchronize: false,
   logging: false,

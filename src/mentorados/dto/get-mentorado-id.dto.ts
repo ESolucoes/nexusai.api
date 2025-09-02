@@ -1,10 +1,15 @@
+﻿// src/mentorados/dto/get-mentorado-id.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
 
 export class GetMentoradoIDDto {
   @ApiProperty() id: string;
   @ApiProperty() usuarioId: string;
-  @ApiProperty() mentorId: string;
-  @ApiProperty({ enum: ['Executive', 'First Class'] }) tipo: 'Executive' | 'First Class';
+
+  @ApiProperty({ nullable: true })
+  mentorId: string | null;
+
+  @ApiProperty({ enum: ['Executive', 'First Class'], nullable: true })
+  tipo: 'Executive' | 'First Class' | null;
 
   @ApiProperty() rg: string;
   @ApiProperty() cpf: string;
