@@ -1,3 +1,4 @@
+// src/app.module.ts
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 import { TypeOrmModule } from '@nestjs/typeorm'
@@ -14,7 +15,9 @@ import { MentoradosModule } from './mentorados/mentorados.module'
 import { AgentesModule } from './agentes/agentes.module'
 import { ArquivosModule } from './arquivos/arquivos.module'
 import { MentoradoAudioModule } from './mentorados-audio/mentorados-audio.module'
-import { MentoradoCurriculoModule } from './mentorados-curriculo/mentorados-curriculo.module'
+
+// NOVO MÓDULO (links de vagas)
+import { VagasLinksModule } from './vagas-links/vagas-links.module'
 
 @Module({
   imports: [
@@ -68,7 +71,9 @@ import { MentoradoCurriculoModule } from './mentorados-curriculo/mentorados-curr
     ArquivosModule,
 
     MentoradoAudioModule,
-    MentoradoCurriculoModule, // ⬅️ NOVO
+
+    // adicionar o módulo de vagas por último para manter padrão
+    VagasLinksModule,
   ],
 })
 export class AppModule {}

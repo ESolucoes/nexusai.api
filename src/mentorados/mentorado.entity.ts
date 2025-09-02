@@ -1,4 +1,3 @@
-// backend/src/mentorados/mentorado.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm'
 
 @Entity({ name: 'mentorados' })
@@ -9,8 +8,8 @@ export class Mentorado {
   @Column({ name: 'usuario_id', type: 'uuid' })
   usuarioId: string
 
-  @Column({ name: 'mentor_id', type: 'uuid' })
-  mentorId: string
+  @Column({ name: 'mentor_id', type: 'uuid', nullable: true })
+  mentorId: string | null
 
   @Column({ type: 'varchar', length: 20 })
   tipo: 'Executive' | 'First Class'
@@ -53,21 +52,6 @@ export class Mentorado {
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   linkedin?: string | null
-
-  /* ====== CAMPOS DO CURRÍCULO (FALTANDO NA TABELA) ====== */
-  @Column({ name: 'curriculo_path', type: 'varchar', length: 255, nullable: true })
-  curriculoPath?: string | null
-
-  @Column({ name: 'curriculo_nome', type: 'varchar', length: 255, nullable: true })
-  curriculoNome?: string | null
-
-  @Column({ name: 'curriculo_mime', type: 'varchar', length: 100, nullable: true })
-  curriculoMime?: string | null
-
-  // pode ser bigint na base; string aqui funciona também
-  @Column({ name: 'curriculo_tamanho', type: 'bigint', nullable: true })
-  curriculoTamanho?: string | null
-  /* ======================================================= */
 
   @CreateDateColumn({ name: 'criado_em' })
   criadoEm: Date
