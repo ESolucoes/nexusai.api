@@ -1,6 +1,4 @@
-import {
-  Controller, Get, Param, Req, Res, NotFoundException,
-} from '@nestjs/common'
+import { Controller, Get, Param, Req, Res, NotFoundException } from '@nestjs/common'
 import { createReadStream, existsSync, statSync } from 'fs'
 import { basename, join, resolve } from 'path'
 import type { Request, Response } from 'express'
@@ -13,11 +11,9 @@ export class UploadsController {
     process.env.UPLOADS_PRIVATE_DIR ?? join(process.cwd(), 'uploads', 'private'),
   )
 
-  // Ex.: /uploads/private/files/curriculum/<arquivo>.pdf
-  //      /uploads/private/mentorados/<id>/audios/<arquivo>.webm
   @Get('private/*')
   servePrivate(@Param() params: { 0: string }, @Req() req: Request, @Res() res: Response) {
-    const rel = params['0'] || ''
+    const rel = (params['0'] || '').replace(/^\/+/, '')
     const filePath = resolve(this.baseDir, rel)
 
     if (!filePath.startsWith(this.baseDir) || !existsSync(filePath) || !statSync(filePath).isFile()) {
@@ -28,7 +24,6 @@ export class UploadsController {
     const mimeType = (mime.lookup(filePath) || 'application/octet-stream') as string
     res.setHeader('Content-Type', mimeType)
 
-    // força download para arquivos de currículo
     if (/[/\\]files[/\\]curriculum[/\\]/i.test(filePath)) {
       const fn = basename(filePath)
       res.setHeader('Content-Disposition', contentDisposition(fn, { type: 'attachment' }))

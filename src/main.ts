@@ -2,9 +2,11 @@ import { NestFactory } from '@nestjs/core'
 import { AppModule } from './app.module'
 import { ValidationPipe } from '@nestjs/common'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
+import { NestExpressApplication } from '@nestjs/platform-express'
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule)
+  const app = await NestFactory.create<NestExpressApplication>(AppModule)
+  app.set('trust proxy', true)
 
   app.enableCors({
     origin: [
@@ -17,7 +19,7 @@ async function bootstrap() {
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     credentials: true,
     allowedHeaders: ['Authorization', 'Content-Type', 'Accept'],
-    exposedHeaders: ['Authorization'],
+    exposedHeaders: ['Authorization', 'Content-Disposition'],
   })
 
   app.useGlobalPipes(
@@ -30,28 +32,14 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('NexusAI - API')
-    .setDescription('Documentação da API do NexusAI (Auth, Usuários, Mentores, Mentorados, Agentes)')
+    .setDescription('Documentação da API do NexusAI')
     .setVersion('1.0.0')
     .addBearerAuth()
     .build()
 
   const document = SwaggerModule.createDocument(app, config)
-  SwaggerModule.setup('docs', app, document, {
-    swaggerOptions: {
-      tagsSorter: 'alpha',
-      operationsSorter: (a: any, b: any) => {
-        const order = ['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace']
-        const mA = a.get('method')
-        const mB = b.get('method')
-        if (mA !== mB) return order.indexOf(mA) - order.indexOf(mB)
-        const pA = a.get('path')
-        const pB = b.get('path')
-        return pA.localeCompare(pB)
-      },
-    },
-  })
+  SwaggerModule.setup('docs', app, document)
 
-  // sem fallback manual de sendFile — nada de caminhos relativos aqui
   await app.listen(Number(process.env.PORT ?? 3000), '0.0.0.0')
 }
 bootstrap()

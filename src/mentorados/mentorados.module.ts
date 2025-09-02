@@ -4,13 +4,11 @@ import { Mentorado } from './mentorado.entity'
 import { MentoradosService } from './mentorados.service'
 import { MentoradosController } from './mentorados.controller'
 import { MentoresModule } from '../mentores/mentores.module'
-import { ArquivosModule } from '../arquivos/arquivos.module'
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Mentorado]),
     forwardRef(() => MentoresModule),
-    ArquivosModule,
   ],
   providers: [MentoradosService],
   controllers: [MentoradosController],

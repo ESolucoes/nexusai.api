@@ -1,4 +1,3 @@
-// backend/src/mentorados/mentorados.service.ts
 import { ConflictException, Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
@@ -6,7 +5,6 @@ import { Mentorado } from './mentorado.entity'
 import { PostMentoradoDto } from './dto/post-mentorado.dto'
 import { PutMentoradoDto } from './dto/put-mentorado.dto'
 import { MentoresService } from '../mentores/mentores.service'
-import { ArquivosService } from '../arquivos/arquivos.service'
 
 @Injectable()
 export class MentoradosService {
@@ -14,10 +12,8 @@ export class MentoradosService {
     @InjectRepository(Mentorado)
     private readonly repo: Repository<Mentorado>,
     private readonly mentoresService: MentoresService,
-    private readonly arquivosService: ArquivosService,
   ) {}
 
-  /** USADO pelo UsuariosController. Não cria rota. */
   async buscarPorUsuarioId(usuarioId: string): Promise<Mentorado | null> {
     return this.repo.findOne({ where: { usuarioId } })
   }
@@ -80,32 +76,5 @@ export class MentoradosService {
     const res = await this.repo.delete(id)
     if (res.affected === 0) throw new NotFoundException('Mentorado não encontrado')
     return { sucesso: true }
-  }
-
-  async salvarCurriculo(mentoradoId: string, file: Express.Multer.File) {
-    const m = await this.buscarPorId(mentoradoId)
-
-    this.arquivosService.ensurePrivateDir('files/curriculum')
-
-    const rel = ['files', 'curriculum', file.filename].join('/').replace(/\\/g, '/')
-    const storageKey = ['uploads', 'private', rel].join('/').replace(/\\/g, '/')
-
-    ;(m as any).curriculoPath = storageKey
-    ;(m as any).curriculoNome = file.originalname || file.filename
-    ;(m as any).curriculoMime = file.mimetype || null
-    ;(m as any).curriculoTamanho = String(file.size)
-
-    await this.repo.save(m)
-
-    return {
-      sucesso: true,
-      storageKey,
-      filename: (m as any).curriculoNome,
-      mime: (m as any).curriculoMime || 'application/octet-stream',
-      tamanho: Number((m as any).curriculoTamanho || 0),
-      url: this.arquivosService.buildPrivateUrl
-        ? this.arquivosService.buildPrivateUrl(storageKey)
-        : null,
-    }
   }
 }
