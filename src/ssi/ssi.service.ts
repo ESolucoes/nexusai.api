@@ -13,6 +13,20 @@ import { SsiStatus } from './enums/ssi-status.enum';
 import { PutSsiMetaDto } from './dto/put-ssi-meta.dto';
 import { PutSsiMetasBatchDto } from './dto/put-ssi-metas-batch.dto';
 
+/** Normaliza qualquer 'YYYY-MM-DD' para a segunda-feira dessa semana (ISO) */
+function normalizeToMonday(dateStr: string): string {
+  if (!dateStr) throw new BadRequestException('dataReferencia inválida');
+  const d = new Date(dateStr + 'T00:00:00Z');
+  if (isNaN(d.getTime())) throw new BadRequestException('dataReferencia inválida');
+  const day = d.getUTCDay(); // 0=dom,1=seg,...6=sab
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diffToMonday);
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 @Injectable()
 export class SsiService {
   constructor(
@@ -32,11 +46,12 @@ export class SsiService {
     return SsiStatus.RUIM;
   }
 
-  async listar(q: QuerySsiDto) {
-    const where: FindOptionsWhere<SsiResultado> = {};
-    if (q.usuarioId) where.usuarioId = q.usuarioId;
+  /** Lista com paginação; SEMPRE escopado por usuarioId */
+  async listar(q: QuerySsiDto & { usuarioId: string }) {
+    const where: FindOptionsWhere<SsiResultado> = { usuarioId: q.usuarioId };
     if (q.metrica) where.metrica = q.metrica as any;
     if (q.dataInicio && q.dataFim) where.dataReferencia = Between(q.dataInicio, q.dataFim);
+
     const take = q.quantidade ?? 20;
     const skip = ((q.pagina ?? 1) - 1) * take;
     const [items, total] = await this.resultados.findAndCount({
@@ -48,22 +63,50 @@ export class SsiService {
     return { total, pagina: q.pagina ?? 1, quantidade: take, items };
   }
 
-  /** POST batch (compat) */
-  async criarBatch(dto: PostSsiBatchDto) {
+  /** Lista todas as datas de referência (segundas) do usuário */
+  async listarSemanas(usuarioId: string) {
+    const rows = await this.resultados.createQueryBuilder('r')
+      .select('r.dataReferencia', 'dataReferencia')
+      .addSelect('COUNT(*)', 'total')
+      .where('r.usuarioId = :usuarioId', { usuarioId })
+      .groupBy('r.dataReferencia')
+      .orderBy('r.dataReferencia', 'DESC')
+      .getRawMany<{ datareferencia: string; total: string }>();
+
+    return rows.map((r) => ({
+      dataReferencia: (r as any).dataReferencia ?? (r as any).datareferencia,
+      totalMetricas: Number((r as any).total),
+    }));
+  }
+
+  /** Retorna todos os registros de UMA semana (normalizada) do usuário */
+  async obterPorSemana(usuarioId: string, data: string) {
+    const semana = normalizeToMonday(data);
+    const itens = await this.resultados.find({
+      where: { usuarioId, dataReferencia: semana },
+      order: { metrica: 'ASC' },
+    });
+    return { semana, itens };
+  }
+
+  /** POST batch — normaliza a semana e upserta por (usuario, metrica, semana) */
+  async criarBatch(dto: PostSsiBatchDto & { usuarioId: string }) {
+    const semana = normalizeToMonday(dto.dataReferencia);
     const out: SsiResultado[] = [];
     for (const item of dto.itens) {
       const meta = await this.getMeta(item.metrica);
       const status = this.calcularStatus(item.valor, meta.valor);
-      const entity = this.resultados.create({
-        usuarioId: dto.usuarioId ?? null,
-        metrica: item.metrica,
-        dataReferencia: dto.dataReferencia,
-        valor: String(item.valor),
-        unidade: meta.unidade,
-        status,
-        metaAplicada: String(meta.valor),
-      });
-      out.push(entity);
+      out.push(
+        this.resultados.create({
+          usuarioId: dto.usuarioId,
+          metrica: item.metrica,
+          dataReferencia: semana,
+          valor: String(item.valor),
+          unidade: meta.unidade,
+          status,
+          metaAplicada: String(meta.valor),
+        }),
+      );
     }
     await this.resultados
       .createQueryBuilder()
@@ -71,22 +114,23 @@ export class SsiService {
       .into(SsiResultado)
       .values(out)
       .orUpdate(
-        ['valor', 'status', 'meta_aplicada', 'atualizado_em'],
+        ['valor', 'status', 'meta_aplicada', 'atualizado_em', 'unidade'],
         ['usuario_id', 'metrica', 'data_referencia'],
         { skipUpdateIfNoValuesChanged: true },
       )
       .execute();
-    return { sucesso: true };
+    return { sucesso: true, dataReferencia: semana };
   }
 
-  /** PUT 1 item (upsert pela unique) */
-  async upsertUm(dto: PutSsiDto) {
+  /** PUT 1 item — normaliza a semana e upserta */
+  async upsertUm(dto: PutSsiDto & { usuarioId: string }) {
+    const semana = normalizeToMonday(dto.dataReferencia);
     const meta = await this.getMeta(dto.metrica);
     const status = this.calcularStatus(dto.valor, meta.valor);
     const entity = this.resultados.create({
-      usuarioId: dto.usuarioId ?? null,
+      usuarioId: dto.usuarioId,
       metrica: dto.metrica,
-      dataReferencia: dto.dataReferencia,
+      dataReferencia: semana,
       valor: String(dto.valor),
       unidade: meta.unidade,
       status,
@@ -98,30 +142,32 @@ export class SsiService {
       .into(SsiResultado)
       .values(entity)
       .orUpdate(
-        ['valor', 'status', 'meta_aplicada', 'atualizado_em'],
+        ['valor', 'status', 'meta_aplicada', 'atualizado_em', 'unidade'],
         ['usuario_id', 'metrica', 'data_referencia'],
         { skipUpdateIfNoValuesChanged: true },
       )
       .execute();
-    return { sucesso: true };
+    return { sucesso: true, dataReferencia: semana };
   }
 
-  /** PUT batch (upsert em lote) */
-  async upsertBatch(dto: PutSsiBatchDto) {
+  /** PUT batch — normaliza a semana e upserta */
+  async upsertBatch(dto: PutSsiBatchDto & { usuarioId: string }) {
+    const semana = normalizeToMonday(dto.dataReferencia);
     const out: SsiResultado[] = [];
     for (const item of dto.itens) {
       const meta = await this.getMeta(item.metrica);
       const status = this.calcularStatus(item.valor, meta.valor);
-      const entity = this.resultados.create({
-        usuarioId: dto.usuarioId ?? null,
-        metrica: item.metrica,
-        dataReferencia: dto.dataReferencia,
-        valor: String(item.valor),
-        unidade: meta.unidade,
-        status,
-        metaAplicada: String(meta.valor),
-      });
-      out.push(entity);
+      out.push(
+        this.resultados.create({
+          usuarioId: dto.usuarioId,
+          metrica: item.metrica,
+          dataReferencia: semana,
+          valor: String(item.valor),
+          unidade: meta.unidade,
+          status,
+          metaAplicada: String(meta.valor),
+        }),
+      );
     }
     await this.resultados
       .createQueryBuilder()
@@ -129,19 +175,19 @@ export class SsiService {
       .into(SsiResultado)
       .values(out)
       .orUpdate(
-        ['valor', 'status', 'meta_aplicada', 'atualizado_em'],
+        ['valor', 'status', 'meta_aplicada', 'atualizado_em', 'unidade'],
         ['usuario_id', 'metrica', 'data_referencia'],
         { skipUpdateIfNoValuesChanged: true },
       )
       .execute();
-    return { sucesso: true };
+    return { sucesso: true, dataReferencia: semana };
   }
 
   async listarMetas() {
     return this.metas.find({ order: { metrica: 'ASC' } });
   }
 
-  /** Upsert de uma meta. Se recalc=true, recalc status/meta_aplicada/unidade em ssi_resultados dessa métrica */
+  /** Upsert de meta. Se recalc=true, recalcula históricos da métrica */
   async upsertMeta(dto: PutSsiMetaDto, recalc = false) {
     await this.metas
       .createQueryBuilder()
@@ -164,7 +210,7 @@ export class SsiService {
     return { sucesso: true };
   }
 
-  /** Upsert de várias metas. Se recalc=true, aplica recálculo para cada métrica atualizada */
+  /** Upsert de metas (batch). Se recalc=true, recalcula cada métrica atualizada */
   async upsertMetasBatch(dto: PutSsiMetasBatchDto, recalc = false) {
     if (!dto.itens?.length) return { sucesso: true };
 

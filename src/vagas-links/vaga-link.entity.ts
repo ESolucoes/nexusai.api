@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, Index, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  Index,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity('vaga_links')
 export class VagaLink {
@@ -21,6 +28,11 @@ export class VagaLink {
   @Index()
   @Column({ default: true })
   ativo: boolean;
+
+  /** Dono do link (escopo por usuário autenticado) */
+  @Index()
+  @Column({ type: 'uuid', name: 'owner_user_id', nullable: true })
+  ownerUserId!: string | null;
 
   @CreateDateColumn({ name: 'criado_em', type: 'timestamptz' })
   criadoEm: Date;
