@@ -49,6 +49,20 @@ export class SsiController {
     return this.service.obterPorSemana(userId, data);
   }
 
+  /** ===================== NOVO: Tabela de evolução por semanas (linhas KPIs x colunas Semanas) ===================== */
+  @Get('dashboard-tabela')
+  @ApiQuery({ name: 'dataInicio', required: false, description: "Filtro opcional: YYYY-MM-DD (início do intervalo)" })
+  @ApiQuery({ name: 'dataFim', required: false, description: "Filtro opcional: YYYY-MM-DD (fim do intervalo)" })
+  @ApiOkResponse({ description: 'Tabela de evolução por semanas (sem status/meta), própria para o dashboard' })
+  evolucaoPorSemanas(
+    @Req() req: any,
+    @Query('dataInicio') dataInicio?: string,
+    @Query('dataFim') dataFim?: string,
+  ) {
+    const userId = pickUserIdFromReq(req);
+    return this.service.listarEvolucaoSemanas(userId, { dataInicio, dataFim });
+  }
+
   /** POST em lote — grava para o usuário do JWT e normaliza a semana */
   @Post('batch')
   @ApiOkResponse({ description: 'Cria/atualiza resultados em lote (POST)' })

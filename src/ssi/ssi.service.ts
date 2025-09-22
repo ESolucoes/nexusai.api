@@ -65,7 +65,8 @@ export class SsiService {
 
   /** Lista todas as datas de referência (segundas) do usuário */
   async listarSemanas(usuarioId: string) {
-    const rows = await this.resultados.createQueryBuilder('r')
+    const rows = await this.resultados
+      .createQueryBuilder('r')
       .select('r.dataReferencia', 'dataReferencia')
       .addSelect('COUNT(*)', 'total')
       .where('r.usuarioId = :usuarioId', { usuarioId })
@@ -87,6 +88,65 @@ export class SsiService {
       order: { metrica: 'ASC' },
     });
     return { semana, itens };
+  }
+
+  /** ===================== NOVO: Tabela de evolução por semanas (linhas KPIs, colunas semanas) ===================== */
+  async listarEvolucaoSemanas(
+    usuarioId: string,
+    { dataInicio, dataFim }: { dataInicio?: string; dataFim?: string },
+  ) {
+    const whereDate = dataInicio && dataFim ? `AND r.data_referencia BETWEEN $2 AND $3` : ``;
+
+    // 1) semanas distintas (segunda-feira) em ordem crescente
+    const paramsSemanas: any[] = [usuarioId];
+    if (whereDate) paramsSemanas.push(dataInicio, dataFim);
+
+    const semanas = await this.resultados.query(
+      `
+      SELECT DISTINCT r.data_referencia AS semana
+      FROM ssi_resultados r
+      WHERE r.usuario_id = $1
+      ${whereDate}
+      ORDER BY semana ASC
+      `,
+      paramsSemanas,
+    );
+
+    // 2) valores por (métrica x semana), SEM status/meta_aplicada (não usamos metas aqui)
+    const params: any[] = [usuarioId];
+    if (whereDate) params.push(dataInicio, dataFim);
+
+    const rows = await this.resultados.query(
+      `
+      SELECT 
+        r.metrica,
+        r.data_referencia AS semana,
+        r.valor::numeric AS valor,
+        r.unidade
+      FROM ssi_resultados r
+      WHERE r.usuario_id = $1
+      ${whereDate}
+      ORDER BY r.metrica ASC, r.data_referencia ASC
+      `,
+      params,
+    );
+
+    const semanasArr = semanas.map((s: any) => s.semana);
+    const map: Record<
+      string,
+      { metrica: string; unidade: SsiUnidade; valores: Record<string, number> }
+    > = {};
+
+    for (const r of rows) {
+      const key = r.metrica as string;
+      if (!map[key]) {
+        map[key] = { metrica: r.metrica, unidade: r.unidade, valores: {} };
+      }
+      map[key].valores[r.semana] = Number(r.valor);
+    }
+
+    const itens = Object.values(map).sort((a, b) => a.metrica.localeCompare(b.metrica));
+    return { semanas: semanasArr, itens };
   }
 
   /** POST batch — normaliza a semana e upserta por (usuario, metrica, semana) */

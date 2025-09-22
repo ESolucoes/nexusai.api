@@ -1,12 +1,29 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { join, resolve, basename } from 'path'
-import { existsSync, mkdirSync, statSync, readdirSync, createReadStream, readFileSync, writeFileSync } from 'fs'
+import {
+  existsSync,
+  mkdirSync,
+  statSync,
+  readdirSync,
+  createReadStream,
+  readFileSync,
+  writeFileSync,
+} from 'fs'
 import * as mime from 'mime-types'
 import type { Response } from 'express'
 
 type CurriculoMeta = {
   filename: string
   originalName: string
+  savedAt: string
+}
+
+type SavedInfo = {
+  filename: string
+  originalName: string
+  mime: string
+  size: number
+  url: string
   savedAt: string
 }
 
@@ -26,14 +43,13 @@ export class MentoradoCurriculoService {
     return dir
   }
 
+  /** ======= Meta (mantém compat com “último”) ======= */
   private metaPath(mentoradoId: string) {
     return resolve(this.dirFor(mentoradoId), 'latest.json')
   }
-
   private writeMeta(mentoradoId: string, meta: CurriculoMeta) {
     writeFileSync(this.metaPath(mentoradoId), JSON.stringify(meta), 'utf8')
   }
-
   private readMeta(mentoradoId: string): CurriculoMeta | null {
     try {
       const raw = readFileSync(this.metaPath(mentoradoId), 'utf8')
@@ -45,13 +61,17 @@ export class MentoradoCurriculoService {
     }
   }
 
-  savedInfo(mentoradoId: string, file: Express.Multer.File, originalName: string) {
+  /** ======= Save (único) ======= */
+  saveFile(mentoradoId: string, file: Express.Multer.File, originalName: string): SavedInfo {
     const abs = resolve(this.dirFor(mentoradoId), file.filename)
     const st = statSync(abs)
+    const savedAt = new Date(st.mtimeMs).toISOString()
+
+    // atualiza meta do “último”
     const meta: CurriculoMeta = {
       filename: file.filename,
       originalName: originalName || file.originalname || file.filename,
-      savedAt: new Date(st.mtimeMs).toISOString(),
+      savedAt,
     }
     this.writeMeta(mentoradoId, meta)
 
@@ -60,11 +80,54 @@ export class MentoradoCurriculoService {
       originalName: meta.originalName,
       mime: file.mimetype || (mime.lookup(abs) as string) || 'application/octet-stream',
       size: st.size,
-      url: `/mentorados/${mentoradoId}/curriculo`,
-      savedAt: meta.savedAt,
+      url: `/mentorados/${mentoradoId}/curriculo/${encodeURIComponent(file.filename)}`,
+      savedAt,
     }
   }
 
+  /** ======= Save (múltiplos) ======= */
+  saveFiles(
+    mentoradoId: string,
+    items: Array<{ file: Express.Multer.File; originalName: string }>,
+  ): SavedInfo[] {
+    const infos = items.map(({ file, originalName }) =>
+      this.saveFile(mentoradoId, file, originalName),
+    )
+    // o saveFile já atualiza o “último” para o mais recente processado
+    // (que, pela ordem, será o último do array)
+    return infos
+  }
+
+  /** ======= Listar todos do diretório ======= */
+  listFiles(mentoradoId: string): SavedInfo[] {
+    const dir = this.dirFor(mentoradoId)
+    if (!existsSync(dir)) return []
+
+    const files = readdirSync(dir).filter((f) => {
+      const fp = resolve(dir, f)
+      return existsSync(fp) && statSync(fp).isFile() && f !== 'latest.json'
+    })
+
+    const mapped = files.map((f): SavedInfo => {
+      const fp = resolve(dir, f)
+      const st = statSync(fp)
+      const type = (mime.lookup(fp) || 'application/octet-stream') as string
+      return {
+        filename: f,
+        originalName: f, // não temos meta individual persistida; usamos o nome físico
+        mime: type,
+        size: st.size,
+        url: `/mentorados/${mentoradoId}/curriculo/${encodeURIComponent(f)}`,
+        savedAt: new Date(st.mtimeMs).toISOString(),
+      }
+    })
+
+    // mais recentes primeiro
+    mapped.sort((a, b) => Number(new Date(b.savedAt)) - Number(new Date(a.savedAt)))
+    return mapped
+  }
+
+  /** ======= Último arquivo (usa meta e faz fallback por mtime) ======= */
   private getLatestFile(mentoradoId: string) {
     const dir = this.dirFor(mentoradoId)
     if (!existsSync(dir)) throw new NotFoundException('Currículo não encontrado')
@@ -83,7 +146,9 @@ export class MentoradoCurriculoService {
     })
     if (!files.length) throw new NotFoundException('Currículo não encontrado')
 
-    files.sort((a, b) => statSync(resolve(dir, b)).mtimeMs - statSync(resolve(dir, a)).mtimeMs)
+    files.sort(
+      (a, b) => statSync(resolve(dir, b)).mtimeMs - statSync(resolve(dir, a)).mtimeMs,
+    )
     const picked = files[0]
     return { path: resolve(dir, picked), originalName: picked }
   }
@@ -100,10 +165,15 @@ export class MentoradoCurriculoService {
     res.setHeader('Content-Type', type)
     res.setHeader('Content-Length', String(st.size))
     const safeName = basename(originalName || 'curriculo.pdf')
-    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(safeName)}`)
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename*=UTF-8''${encodeURIComponent(safeName)}`,
+    )
 
     const stream = createReadStream(fp)
-    stream.on('error', () => { if (!res.headersSent) res.status(500).end() })
+    stream.on('error', () => {
+      if (!res.headersSent) res.status(500).end()
+    })
     return stream.pipe(res)
   }
 
@@ -116,9 +186,14 @@ export class MentoradoCurriculoService {
     const type = (mime.lookup(fp) || 'application/octet-stream') as string
     res.setHeader('Content-Type', type)
     res.setHeader('Content-Length', String(st.size))
-    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(basename(filename))}`)
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename*=UTF-8''${encodeURIComponent(basename(filename))}`,
+    )
     const stream = createReadStream(fp)
-    stream.on('error', () => { if (!res.headersSent) res.status(500).end() })
+    stream.on('error', () => {
+      if (!res.headersSent) res.status(500).end()
+    })
     return stream.pipe(res)
   }
 }

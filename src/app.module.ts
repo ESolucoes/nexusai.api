@@ -19,14 +19,16 @@ import { SsiModule } from './ssi/ssi.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { VagasLinksModule } from './vagas-links/vagas-links.module';
 import { VigenciasModule } from './vigencias/vigencias.module';
+import { UsuariosAvatarModule } from './usuarios-avatar/usuarios-avatar.module'; // ✅ novo
 
 @Module({
   imports: [
-    // ==== Infra global ====
     ConfigModule.forRoot({ isGlobal: true }),
 
     ServeStaticModule.forRoot({
-      rootPath: resolve(process.env.UPLOADS_PUBLIC_DIR ?? join(process.cwd(), 'uploads', 'public')),
+      rootPath: resolve(
+        process.env.UPLOADS_PUBLIC_DIR ?? join(process.cwd(), 'uploads', 'public'),
+      ),
       serveRoot: '/uploads',
       exclude: ['/uploads/private'],
       serveStaticOptions: { index: false, redirect: false },
@@ -53,9 +55,7 @@ import { VigenciasModule } from './vigencias/vigencias.module';
           secure: process.env.MAIL_SECURE === 'true',
           auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS },
         },
-        defaults: {
-          from: process.env.MAIL_FROM ?? '"Suporte" <no-reply@nexusai.local>',
-        },
+        defaults: { from: process.env.MAIL_FROM ?? '"Suporte" <no-reply@nexusai.local>' },
         template: {
           dir: join(process.cwd(), 'templates'),
           adapter: new HandlebarsAdapter(),
@@ -64,16 +64,17 @@ import { VigenciasModule } from './vigencias/vigencias.module';
       }),
     }),
 
-    // ==== Módulos de domínio (ordem alfabética) ====
+    // ===== módulos =====
     AgentesModule,
     ArquivosModule,
     AutenticacaoModule,
     MentoradoAudioModule,
-    MentoradoCurriculoModule, // <-- adiciona os endpoints de currículo
+    MentoradoCurriculoModule,
     MentoradosModule,
     MentoresModule,
     SsiModule,
     UsuariosModule,
+    UsuariosAvatarModule, // ✅ registra o upload de avatar fora do UsuariosController
     VagasLinksModule,
     VigenciasModule,
   ],

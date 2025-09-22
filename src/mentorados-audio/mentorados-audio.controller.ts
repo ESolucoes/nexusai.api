@@ -7,14 +7,12 @@ import {
   UploadedFile,
   UseGuards,
   UseInterceptors,
-  Req,
-  Res,
 } from '@nestjs/common'
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOkResponse, ApiTags } from '@nestjs/swagger'
 import { JwtAuthGuard } from '../autenticacao/jwt-auth.guard'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { diskStorage } from 'multer'
-import { join } from 'path'
+import { join, extname } from 'path'
 import { existsSync, mkdirSync } from 'fs'
 import { randomUUID } from 'crypto'
 import type { Request, Response } from 'express'
@@ -24,6 +22,19 @@ import { MentoradoAudioService, MentoradoAudioInfo } from './mentorados-audio.se
 @Controller('mentorados')
 export class MentoradoAudioController {
   constructor(private readonly service: MentoradoAudioService) {}
+
+  private static readonly ALLOWED_MIME = new Set<string>([
+    // MP3
+    'audio/mpeg',
+    'audio/mp3',
+    // WAV
+    'audio/wav',
+    'audio/x-wav',
+    'audio/wave',
+    'audio/vnd.wave',
+  ])
+
+  private static readonly ALLOWED_EXT = new Set<string>(['.mp3', '.wav'])
 
   /** Upload: campo do form deve ser `audio` (igual ao front). */
   @Post(':id/audios')
@@ -40,23 +51,51 @@ export class MentoradoAudioController {
     FileInterceptor('audio', {
       storage: diskStorage({
         destination: (req, file, cb) => {
-          const id = String(req.params['id'] || '')
-          const base = process.env.UPLOADS_PRIVATE_DIR || join(process.cwd(), 'uploads', 'private')
-          const folder = join(base, 'mentorados', id, 'audios')
-          if (!existsSync(folder)) mkdirSync(folder, { recursive: true })
-          cb(null, folder)
+          try {
+            const id = String(req.params['id'] || '').trim()
+            if (!id) return cb(new BadRequestException('ID do mentorado inválido'), '')
+            const base = process.env.UPLOADS_PRIVATE_DIR || join(process.cwd(), 'uploads', 'private')
+            const folder = join(base, 'mentorados', id, 'audios')
+            if (!existsSync(folder)) mkdirSync(folder, { recursive: true })
+            cb(null, folder)
+          } catch (e) {
+            cb(e as Error, '')
+          }
         },
         filename: (req, file, cb) => {
-          const defaultExt = (file.mimetype?.split('/')[1] || 'webm').replace(/[^a-z0-9]/gi, '').toLowerCase()
-          const ext = defaultExt ? `.${defaultExt}` : '.webm'
+          // Decide a extensão final com base no MIME ou no nome original
+          const originalExt = (extname(file.originalname) || '').toLowerCase()
+          let ext = ''
+
+          const mime = (file.mimetype || '').toLowerCase()
+          if (mime.includes('mpeg') || mime.includes('mp3')) ext = '.mp3'
+          else if (mime.includes('wav') || mime.includes('wave')) ext = '.wav'
+
+          // Fallback: se o MIME não ajudou, usa a extensão original se for válida
+          if (!ext && MentoradoAudioController.ALLOWED_EXT.has(originalExt)) {
+            ext = originalExt
+          }
+
+          // Último fallback (não deve ocorrer porque o fileFilter já bloqueia): força .mp3
+          if (!ext) ext = '.mp3'
+
           cb(null, `${Date.now()}-${randomUUID()}${ext}`)
         },
       }),
-      limits: { fileSize: 25 * 1024 * 1024 },
+      limits: { fileSize: 25 * 1024 * 1024 }, // 25MB
       fileFilter: (req, file, cb) => {
-        const t = (file.mimetype || '').toLowerCase()
-        if (!t.startsWith('audio/')) {
-          return cb(new BadRequestException('Envie um arquivo de áudio.'), false)
+        const mime = (file.mimetype || '').toLowerCase()
+        const originalExt = (extname(file.originalname) || '').toLowerCase()
+
+        const mimeOk = MentoradoAudioController.ALLOWED_MIME.has(mime)
+        const extOk = MentoradoAudioController.ALLOWED_EXT.has(originalExt)
+
+        // Aceita se (MIME permitido) OU (extensão .mp3/.wav)
+        if (!mimeOk && !extOk) {
+          return cb(
+            new BadRequestException('Formato inválido. Envie um áudio MP3 ou WAV.'),
+            false,
+          )
         }
         cb(null, true)
       },
@@ -78,7 +117,19 @@ export class MentoradoAudioController {
   @UseGuards(JwtAuthGuard)
   @ApiOkResponse({
     schema: {
-      example: { ok: true, total: 1, audios: [{ filename: 'x.webm', url: '/mentorados/ID/audios/x.webm', size: 123, mime: 'audio/webm', savedAt: '...' }] },
+      example: {
+        ok: true,
+        total: 1,
+        audios: [
+          {
+            filename: 'x.mp3',
+            url: '/mentorados/ID/audios/x.mp3',
+            size: 123,
+            mime: 'audio/mpeg',
+            savedAt: '...',
+          },
+        ],
+      },
     },
   })
   async list(@Param('id') mentoradoId: string) {
@@ -93,8 +144,8 @@ export class MentoradoAudioController {
   async stream(
     @Param('id') mentoradoId: string,
     @Param('filename') filename: string,
-    @Req() req: Request,
-    @Res() res: Response,
+    req: Request,
+    res: Response,
   ) {
     return this.service.stream(mentoradoId, filename, req, res)
   }

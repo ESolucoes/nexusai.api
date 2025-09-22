@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { join, resolve } from 'path'
+import { join, resolve, extname } from 'path'
 import { existsSync, mkdirSync, readdirSync, statSync, createReadStream } from 'fs'
 import type { Request, Response } from 'express'
 import * as mime from 'mime-types'
@@ -32,9 +32,18 @@ export class MentoradoAudioService {
   savedInfo(mentoradoId: string, file: Express.Multer.File): MentoradoAudioInfo {
     const p = resolve(this.dirFor(mentoradoId), file.filename)
     const st = statSync(p)
+    // Padroniza MIME baseado na extensão final
+    const ext = (extname(file.filename) || '').toLowerCase()
+    let finalMime =
+      file.mimetype ||
+      (mime.lookup(p) as string) ||
+      'application/octet-stream'
+    if (ext === '.mp3') finalMime = 'audio/mpeg'
+    if (ext === '.wav') finalMime = 'audio/wav'
+
     return {
       filename: file.filename,
-      mime: file.mimetype || (mime.lookup(p) as string) || 'application/octet-stream',
+      mime: finalMime,
       size: st.size,
       url: `/mentorados/${mentoradoId}/audios/${encodeURIComponent(file.filename)}`,
       savedAt: new Date(st.mtimeMs).toISOString(),
@@ -50,9 +59,13 @@ export class MentoradoAudioService {
     return files.map((f) => {
       const fp = join(dir, f)
       const st = statSync(fp)
+      const ext = (extname(f) || '').toLowerCase()
+      let m = (mime.lookup(fp) as string) || 'application/octet-stream'
+      if (ext === '.mp3') m = 'audio/mpeg'
+      if (ext === '.wav') m = 'audio/wav'
       return {
         filename: f,
-        mime: (mime.lookup(fp) as string) || 'application/octet-stream',
+        mime: m,
         size: st.size,
         url: `/mentorados/${mentoradoId}/audios/${encodeURIComponent(f)}`,
         savedAt: new Date(st.mtimeMs).toISOString(),
