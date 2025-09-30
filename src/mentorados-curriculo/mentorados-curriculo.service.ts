@@ -126,6 +126,31 @@ export class MentoradoCurriculoService {
     mapped.sort((a, b) => Number(new Date(b.savedAt)) - Number(new Date(a.savedAt)))
     return mapped
   }
+  
+  // 👈 CORREÇÃO: Nova função para retornar os metadados do último arquivo
+  /** ======= Retorna os metadados do último arquivo (para status do front-end) ======= */
+  getLatestFileInfo(mentoradoId: string): SavedInfo {
+    const dir = this.dirFor(mentoradoId)
+    if (!existsSync(dir)) {
+      throw new NotFoundException('Currículo não encontrado (diretório não existe)')
+    }
+
+    // Reutiliza a lógica para encontrar o caminho e o nome original
+    const { path: fp, originalName } = this.getLatestFile(mentoradoId)
+
+    const st = statSync(fp)
+    const type = (mime.lookup(fp) || 'application/octet-stream') as string
+    
+    // Retorna as informações (SavedInfo)
+    return {
+      filename: basename(fp),
+      originalName: originalName,
+      mime: type,
+      size: st.size,
+      url: `/mentorados/${mentoradoId}/curriculo/${encodeURIComponent(basename(fp))}`,
+      savedAt: new Date(st.mtimeMs).toISOString(),
+    }
+  }
 
   /** ======= Último arquivo (usa meta e faz fallback por mtime) ======= */
   private getLatestFile(mentoradoId: string) {

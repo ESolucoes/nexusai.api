@@ -171,6 +171,18 @@ export class MentoradoCurriculoController {
     const list = this.service.listFiles(mentoradoId)
     return { total: list.length, arquivos: list }
   }
+  
+  // 👈 CORREÇÃO: Novo endpoint para o front-end obter o status após o F5
+  /** ======= Status/Info do Último Currículo (para display) ======= */
+  @Get(':id/curriculo/latest-info')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOkResponse({
+    description: 'Retorna os metadados do último currículo salvo (ou 404 se não houver)',
+  })
+  async getLatestInfo(@Param('id') mentoradoId: string) {
+    return this.service.getLatestFileInfo(mentoradoId) 
+  }
 
   /** ======= Baixar o ÚLTIMO (compatível) ======= */
   @Get(':id/curriculo')

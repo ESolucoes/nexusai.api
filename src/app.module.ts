@@ -27,64 +27,64 @@ import { MentoradoCronogramaModule } from './mentorado-cronograma/mentorado-cron
 
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
 
-    ServeStaticModule.forRoot({
-      rootPath: resolve(
-        process.env.UPLOADS_PUBLIC_DIR ?? join(process.cwd(), 'uploads', 'public'),
-      ),
-      serveRoot: '/uploads',
-      exclude: ['/uploads/private'],
-      serveStaticOptions: { index: false, redirect: false },
-    }),
+    ServeStaticModule.forRoot({
+      rootPath: resolve(
+        process.env.UPLOADS_PUBLIC_DIR ?? join(process.cwd(), 'uploads', 'public'),
+      ),
+      serveRoot: '/uploads',
+      exclude: ['/uploads/private'],
+      serveStaticOptions: { index: false, redirect: false },
+    }),
 
-    TypeOrmModule.forRootAsync({
-      useFactory: () => ({
-        type: 'postgres',
-        host: process.env.DB_HOST,
-        port: Number(process.env.DB_PORT ?? 5432),
-        username: process.env.DB_USERNAME,
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_DATABASE,
-        autoLoadEntities: true,
-        synchronize: false,
-      }),
-    }),
+    TypeOrmModule.forRootAsync({
+      useFactory: () => ({
+        type: 'postgres',
+        host: process.env.DB_HOST,
+        port: Number(process.env.DB_PORT ?? 5432),
+        username: process.env.DB_USERNAME,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_DATABASE,
+        autoLoadEntities: true,
+        synchronize: false,
+      }),
+    }),
 
-    MailerModule.forRootAsync({
-      useFactory: () => ({
-        transport: {
-          host: process.env.MAIL_HOST,
-          port: Number(process.env.MAIL_PORT ?? 587),
-          secure: process.env.MAIL_SECURE === 'true',
-          auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS },
-        },
-        defaults: { from: process.env.MAIL_FROM ?? '"Suporte" <no-reply@nexusai.local>' },
-        template: {
-          dir: join(process.cwd(), 'templates'),
-          adapter: new HandlebarsAdapter(),
-          options: { strict: true },
-        },
-      }),
-    }),
+    MailerModule.forRootAsync({
+      useFactory: () => ({
+        transport: {
+          host: process.env.MAIL_HOST,
+          port: Number(process.env.MAIL_PORT ?? 587),
+          secure: process.env.MAIL_SECURE === 'true',
+          auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS },
+        },
+        defaults: { from: process.env.MAIL_FROM ?? '"Suporte" <no-reply@nexusai.local>' },
+        template: {
+          dir: join(process.cwd(), 'templates'),
+          adapter: new HandlebarsAdapter(),
+          options: { strict: true },
+        },
+      }),
+    }),
 
-    // ===== módulos =====
-    AgentesModule,
-    ArquivosModule,
-    AutenticacaoModule,
-    MentoradoAudioModule,
-    MentoradoCurriculoModule,
-    MentoradosModule,
-    MentoresModule,
-    UsuariosModule,
-    UsuariosAvatarModule,
-    VagasLinksModule,
-    VigenciasModule,
+    // ===== módulos =====
+    AgentesModule,
+    ArquivosModule,
+    AutenticacaoModule,
+    MentoradoAudioModule,
+    MentoradoCurriculoModule,
+    MentoradosModule,
+    MentoresModule,
+    UsuariosModule,
+    UsuariosAvatarModule,
+    VagasLinksModule,
+    VigenciasModule,
 
-    // novos
-    MentoradoSsiModule,
-    MentoradoCronogramaModule,
-  ],
+    // novos
+    MentoradoSsiModule,
+    MentoradoCronogramaModule,
+  ],
 })
 export class AppModule {}
