@@ -1,4 +1,3 @@
-﻿// src/app.module.ts
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -15,11 +14,17 @@ import { MentoradoAudioModule } from './mentorados-audio/mentorados-audio.module
 import { MentoradoCurriculoModule } from './mentorados-curriculo/mentorados-curriculo.module';
 import { MentoradosModule } from './mentorados/mentorados.module';
 import { MentoresModule } from './mentores/mentores.module';
-import { SsiModule } from './ssi/ssi.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { VagasLinksModule } from './vagas-links/vagas-links.module';
 import { VigenciasModule } from './vigencias/vigencias.module';
-import { UsuariosAvatarModule } from './usuarios-avatar/usuarios-avatar.module'; // ✅ novo
+import { UsuariosAvatarModule } from './usuarios-avatar/usuarios-avatar.module';
+
+// Classificação simples de SSI (sem persistência)
+import { MentoradoSsiModule } from './mentorado-ssi/mentorado-ssi.module';
+
+// Novo: Cronograma do Mentorado (semanas + rotina fixa)
+import { MentoradoCronogramaModule } from './mentorado-cronograma/mentorado-cronograma.module';
+
 
 @Module({
   imports: [
@@ -72,11 +77,14 @@ import { UsuariosAvatarModule } from './usuarios-avatar/usuarios-avatar.module';
     MentoradoCurriculoModule,
     MentoradosModule,
     MentoresModule,
-    SsiModule,
     UsuariosModule,
-    UsuariosAvatarModule, // ✅ registra o upload de avatar fora do UsuariosController
+    UsuariosAvatarModule,
     VagasLinksModule,
     VigenciasModule,
+
+    // novos
+    MentoradoSsiModule,
+    MentoradoCronogramaModule,
   ],
 })
 export class AppModule {}

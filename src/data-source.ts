@@ -1,22 +1,28 @@
-﻿import 'dotenv/config'
-import 'reflect-metadata'
-import { DataSource } from 'typeorm'
+﻿import 'dotenv/config';
+import 'reflect-metadata';
+import { DataSource } from 'typeorm';
 
-import { Usuario } from './usuarios/usuario.entity'
-import { CodigoRedefinicao } from './autenticacao/codigo-redefinicao.entity'
+import { Usuario } from './usuarios/usuario.entity';
+import { CodigoRedefinicao } from './autenticacao/codigo-redefinicao.entity';
 
-import { CriarUsuarios1710000000000 } from './migrations/1710000000000-CriarUsuarios'
-import { CriarCodigosRedefinicaoSenha1710000000001 } from './migrations/1710000000001-CriarCodigosRedefinicaoSenha'
-import { CriarVigencias1710000000002 } from './migrations/1710000000002-CriarVigencias'
-import { CriarMentores1710000000003 } from './migrations/1710000000003-CriarMentores'
-import { CriarMentorados1710000000004 } from './migrations/1710000000004-CriarMentorados'
-import { CriarChatTabelas1710000000005 } from './migrations/1710000000005-CriarTabelaChats'
-import { AdicionarAvatarUsuarios1710000000006 } from './migrations/1710000000006-AdicionarAvatarUsuarios'
-import { AdicionarCurriculoMentorados1710000000007 } from './migrations/1710000000007-AdicionarCurriculoMentorados'
-import { RemoverCurriculoMentorados1710000000008 } from './migrations/1710000000008-RemoverCurriculoMentorados'
-import { CriarVagaLinks1710000000009 } from './migrations/1710000000009-CriarVagaLinks'
-import { CriarSsi1710000000010 } from './migrations/1710000000010-CriarSsi'
-import { AdicionarOwnerUserIdEmVagaLinks1710000000011 } from './migrations/1710000000011-AdicionarOwnerUserIdEmVagaLinks'
+import { CriarUsuarios1710000000000 } from './migrations/1710000000000-CriarUsuarios';
+import { CriarCodigosRedefinicaoSenha1710000000001 } from './migrations/1710000000001-CriarCodigosRedefinicaoSenha';
+import { CriarVigencias1710000000002 } from './migrations/1710000000002-CriarVigencias';
+import { CriarMentores1710000000003 } from './migrations/1710000000003-CriarMentores';
+import { CriarMentorados1710000000004 } from './migrations/1710000000004-CriarMentorados';
+import { CriarChatTabelas1710000000005 } from './migrations/1710000000005-CriarTabelaChats';
+import { AdicionarAvatarUsuarios1710000000006 } from './migrations/1710000000006-AdicionarAvatarUsuarios';
+import { AdicionarCurriculoMentorados1710000000007 } from './migrations/1710000000007-AdicionarCurriculoMentorados';
+import { RemoverCurriculoMentorados1710000000008 } from './migrations/1710000000008-RemoverCurriculoMentorados';
+import { CriarVagaLinks1710000000009 } from './migrations/1710000000009-CriarVagaLinks';
+import { CriarSsi1710000000010 } from './migrations/1710000000010-CriarSsi';
+import { AdicionarOwnerUserIdEmVagaLinks1710000000011 } from './migrations/1710000000011-AdicionarOwnerUserIdEmVagaLinks';
+
+// 0012: remover SSI antigo
+import { RemoverSsi1710000000012 } from './migrations/1710000000012-RemoverSsi';
+
+// 0013: NOVA – cronograma (semanas/tarefas) + rotina semanal
+import { CriarMentoradoCronograma1710000000013 } from './migrations/1710000000013-CriarMentoradoCronograma.ts';
 
 export default new DataSource({
   type: 'postgres',
@@ -39,7 +45,13 @@ export default new DataSource({
     CriarVagaLinks1710000000009,
     CriarSsi1710000000010,
     AdicionarOwnerUserIdEmVagaLinks1710000000011,
+
+    // 0012 (drop SSI)
+    RemoverSsi1710000000012,
+
+    // 0013 (cronograma + rotina)
+    CriarMentoradoCronograma1710000000013,
   ],
   synchronize: false,
   logging: false,
-})
+});
