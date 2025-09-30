@@ -1,3 +1,4 @@
+// src/migrations/1710000000013-CriarMentoradoCronograma.ts
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CriarMentoradoCronograma1710000000013 implements MigrationInterface {
@@ -17,7 +18,7 @@ export class CriarMentoradoCronograma1710000000013 implements MigrationInterface
         "criadoEm" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
         "atualizadoEm" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
         CONSTRAINT "fk_cronograma_semana_usuario" FOREIGN KEY ("usuarioId")
-          REFERENCES "usuario"("id") ON DELETE SET NULL ON UPDATE NO ACTION
+          REFERENCES "usuarios"("id") ON DELETE SET NULL ON UPDATE NO ACTION
       );
     `);
     await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_cronograma_semana_usuario" ON "mentorado_cronograma_semana" ("usuarioId");`);
@@ -36,7 +37,7 @@ export class CriarMentoradoCronograma1710000000013 implements MigrationInterface
         "criadoEm" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
         "atualizadoEm" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
         CONSTRAINT "fk_cronograma_rotina_usuario" FOREIGN KEY ("usuarioId")
-          REFERENCES "usuario"("id") ON DELETE SET NULL ON UPDATE NO ACTION
+          REFERENCES "usuarios"("id") ON DELETE SET NULL ON UPDATE NO ACTION
       );
     `);
     await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_cronograma_rotina_usuario" ON "mentorado_cronograma_rotina" ("usuarioId");`);

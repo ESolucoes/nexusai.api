@@ -22,7 +22,7 @@ import { AdicionarOwnerUserIdEmVagaLinks1710000000011 } from './migrations/17100
 import { RemoverSsi1710000000012 } from './migrations/1710000000012-RemoverSsi';
 
 // 0013: NOVA – cronograma (semanas/tarefas) + rotina semanal
-import { CriarMentoradoCronograma1710000000013 } from './migrations/1710000000013-CriarMentoradoCronograma.ts';
+import { CriarMentoradoCronograma1710000000013 } from './migrations/1710000000013-CriarMentoradoCronograma';
 
 export default new DataSource({
   type: 'postgres',
