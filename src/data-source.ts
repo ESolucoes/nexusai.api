@@ -1,10 +1,13 @@
-﻿import 'dotenv/config';
+﻿// src/data-source.ts
+import 'dotenv/config';
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 
+// Entidades
 import { Usuario } from './usuarios/usuario.entity';
 import { CodigoRedefinicao } from './autenticacao/codigo-redefinicao.entity';
 
+// Migrations
 import { CriarUsuarios1710000000000 } from './migrations/1710000000000-CriarUsuarios';
 import { CriarCodigosRedefinicaoSenha1710000000001 } from './migrations/1710000000001-CriarCodigosRedefinicaoSenha';
 import { CriarVigencias1710000000002 } from './migrations/1710000000002-CriarVigencias';
@@ -17,12 +20,10 @@ import { RemoverCurriculoMentorados1710000000008 } from './migrations/1710000000
 import { CriarVagaLinks1710000000009 } from './migrations/1710000000009-CriarVagaLinks';
 import { CriarSsi1710000000010 } from './migrations/1710000000010-CriarSsi';
 import { AdicionarOwnerUserIdEmVagaLinks1710000000011 } from './migrations/1710000000011-AdicionarOwnerUserIdEmVagaLinks';
-
-// 0012: remover SSI antigo
 import { RemoverSsi1710000000012 } from './migrations/1710000000012-RemoverSsi';
-
-// 0013: NOVA – cronograma (semanas/tarefas) + rotina semanal
 import { CriarMentoradoCronograma1710000000013 } from './migrations/1710000000013-CriarMentoradoCronograma';
+import { CriarMentoradosCandidaturas1710000000014 } from './migrations/1710000000014-CriarMentoradosCandidaturas';
+import { AdicionarCamposCandidaturas1710000000015 } from './migrations/1710000000015-AdicionarCamposCandidaturas';
 
 export default new DataSource({
   type: 'postgres',
@@ -45,12 +46,10 @@ export default new DataSource({
     CriarVagaLinks1710000000009,
     CriarSsi1710000000010,
     AdicionarOwnerUserIdEmVagaLinks1710000000011,
-
-    // 0012 (drop SSI)
     RemoverSsi1710000000012,
-
-    // 0013 (cronograma + rotina)
     CriarMentoradoCronograma1710000000013,
+    CriarMentoradosCandidaturas1710000000014,
+    AdicionarCamposCandidaturas1710000000015, // migration nova 015
   ],
   synchronize: false,
   logging: false,
