@@ -1,17 +1,28 @@
 // backend/src/mentorados-candidatura/mentorados-candidatura.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { CreateCandidaturaDto } from './dto/create-candidatura.dto';
-import { candidatarLinkedIn } from './linkedin/linkedin-automation';
+import { candidatarPorTipo } from './linkedin/linkedin-automation';
 
 @Injectable()
 export class MentoradosCandidaturaService {
+  private readonly logger = new Logger(MentoradosCandidaturaService.name);
+
   async create(dto: CreateCandidaturaDto) {
-    // Aqui você poderia salvar a candidatura no banco
+    // opcional: salvar no banco antes com status 'pendente'
     // await this.candidaturaRepository.save({ ...dto, status: 'pendente' });
 
-    // Chamar automação do LinkedIn
-    await candidatarLinkedIn(dto);
+    try {
+      const result = await candidatarPorTipo(dto);
 
-    return { message: 'Candidatura enviada com sucesso!' };
+      // opcional: atualizar registro no banco com resultado (attempted/applied, erros, etc)
+      // await this.candidaturaRepository.update(id, { status: 'concluida', resultado: result });
+
+      return { sucesso: true, result };
+    } catch (err) {
+      this.logger.error('Erro ao processar candidatura', err as any);
+      // opcional: atualizar registro no banco com erro
+      // await this.candidaturaRepository.update(id, { status: 'erro', erro: String(err) });
+      throw new InternalServerErrorException('Falha ao processar automação de candidatura.');
+    }
   }
 }

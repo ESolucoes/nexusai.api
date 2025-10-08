@@ -26,12 +26,19 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV NODE_OPTIONS="--experimental-global-webcrypto"
 
+# libs básicas p/ Playwright
+RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont
+
 # só o necessário pra rodar
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules ./node_modules
 COPY package*.json ./
 COPY entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
+
+# instalar Playwright e Chromium
+RUN npx playwright install --with-deps
+RUN npx playwright install chromium
 
 EXPOSE 3000
 CMD ["./entrypoint.sh"]
