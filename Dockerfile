@@ -24,6 +24,12 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV NODE_OPTIONS="--experimental-global-webcrypto"
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV DISPLAY=:99
+
+# instala Xvfb para simular display gráfico
+RUN apt-get update && \
+    apt-get install -y dumb-init xvfb && \
+    rm -rf /var/lib/apt/lists/*
 
 # diretório global para browsers (imagem Playwright já fornece permissão correta)
 RUN mkdir -p /ms-playwright
@@ -35,9 +41,10 @@ COPY package*.json ./
 COPY entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
-# dumb-init para melhor handling de signals
-RUN apt-get update && apt-get install -y dumb-init && rm -rf /var/lib/apt/lists/*
+# dumb-init como init para melhor handling de signals
 ENTRYPOINT ["dumb-init", "--"]
 
 EXPOSE 3000
-CMD ["./entrypoint.sh"]
+
+# usa Xvfb para abrir navegador em modo headful
+CMD ["xvfb-run", "-s", "-screen 0 1280x1024x24", "./entrypoint.sh"]
