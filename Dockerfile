@@ -26,8 +26,23 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV NODE_OPTIONS="--experimental-global-webcrypto"
 
-# libs básicas p/ Chromium/Playwright
-RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont bash udev lcms2 fontconfig
+# diretório fixo para browsers (evita cache em /root)
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+# libs necessárias para Chromium funcionar no Alpine
+RUN apk add --no-cache \
+  chromium \
+  nss \
+  freetype \
+  harfbuzz \
+  ca-certificates \
+  ttf-freefont \
+  fontconfig \
+  bash \
+  lcms2
+
+# cria o diretório global para browsers e dá permissões
+RUN mkdir -p /ms-playwright && chmod a+rX /ms-playwright
 
 # só o necessário pra rodar
 COPY --from=build /app/dist ./dist
@@ -36,8 +51,14 @@ COPY package*.json ./
 COPY entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
-# instalar Chromium via Playwright (sem --with-deps)
+# instala Chromium via Playwright no caminho definido (não --with-deps)
+# executa como root — os arquivos serão escritos em /ms-playwright
 RUN npx playwright install chromium
+
+# garante que o user 'node' (existente na imagem oficial) possa ler/exec os browsers
+# se você executar a app como usuário diferente, ajuste o usuário/UID abaixo
+RUN chown -R node:node /ms-playwright || true
+RUN chmod -R a+rX /ms-playwright
 
 EXPOSE 3000
 CMD ["./entrypoint.sh"]
