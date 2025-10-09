@@ -25,8 +25,8 @@ ENV PORT=3000
 ENV NODE_OPTIONS="--experimental-global-webcrypto"
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# diretório global para browsers
-RUN mkdir -p /ms-playwright && chmod a+rX /ms-playwright
+# diretório global para browsers (imagem Playwright já fornece permissão correta)
+RUN mkdir -p /ms-playwright
 
 # copia build e node_modules
 COPY --from=build /app/dist ./dist
@@ -35,11 +35,7 @@ COPY package*.json ./
 COPY entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
-# garante que user node tenha permissão
-RUN chown -R node:node /ms-playwright
-RUN chmod -R a+rX /ms-playwright
-
-# usa dumb-init como init para melhor handling de signals
+# dumb-init para melhor handling de signals
 RUN apt-get update && apt-get install -y dumb-init && rm -rf /var/lib/apt/lists/*
 ENTRYPOINT ["dumb-init", "--"]
 
