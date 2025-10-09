@@ -120,6 +120,7 @@ export async function candidatarPorTipo(dto: CreateCandidaturaDto) {
     headless: false,
     slowMo: 60,
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
+    executablePath: '/ms-playwright/chromium-1194/chrome-linux/chrome', // caminho fixo do Dockerfile
     viewport: { width: 1200, height: 900 },
   });
 

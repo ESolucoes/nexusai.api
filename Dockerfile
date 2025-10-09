@@ -31,20 +31,22 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 # libs necessárias para Chromium funcionar no Alpine
 RUN apk add --no-cache \
-  chromium \
-  nss \
-  freetype \
-  harfbuzz \
-  ca-certificates \
-  ttf-freefont \
-  fontconfig \
-  bash \
-  lcms2
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    fontconfig \
+    bash \
+    lcms2 \
+    udev \
+    dumb-init
 
 # cria o diretório global para browsers e dá permissões
 RUN mkdir -p /ms-playwright && chmod a+rX /ms-playwright
 
-# só o necessário pra rodar
+# copia build e node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules ./node_modules
 COPY package*.json ./
@@ -55,10 +57,12 @@ RUN chmod +x ./entrypoint.sh
 # executa como root — os arquivos serão escritos em /ms-playwright
 RUN npx playwright install chromium
 
-# garante que o user 'node' (existente na imagem oficial) possa ler/exec os browsers
-# se você executar a app como usuário diferente, ajuste o usuário/UID abaixo
-RUN chown -R node:node /ms-playwright || true
+# garante que o user 'node' possa ler/exec os browsers
+RUN chown -R node:node /ms-playwright
 RUN chmod -R a+rX /ms-playwright
+
+# usa dumb-init como init para melhor handling de signals
+ENTRYPOINT ["dumb-init", "--"]
 
 EXPOSE 3000
 CMD ["./entrypoint.sh"]
