@@ -9,10 +9,12 @@ if (!fs.existsSync(DEBUG_DIR)) fs.mkdirSync(DEBUG_DIR, { recursive: true });
 async function saveDebug(page: Page, name: string) {
   try {
     const ts = Date.now();
-    await page.screenshot({
-      path: path.join(DEBUG_DIR, `${name}-${ts}.png`),
-      fullPage: true,
-    }).catch(() => {});
+    await page
+      .screenshot({
+        path: path.join(DEBUG_DIR, `${name}-${ts}.png`),
+        fullPage: true,
+      })
+      .catch(() => {});
     const html = await page.content();
     fs.writeFileSync(path.join(DEBUG_DIR, `${name}-${ts}.html`), html);
   } catch (err) {
@@ -51,7 +53,15 @@ async function clickByTexts(page: Page, texts: string[]) {
       const aria = (await h.getAttribute('aria-label').catch(() => '')) || '';
       const title = (await h.getAttribute('title').catch(() => '')) || '';
       const value = (await h.getAttribute('value').catch(() => '')) || '';
-      const txt = (inner + ' ' + aria + ' ' + title + ' ' + value).toLowerCase();
+      const txt = (
+        inner +
+        ' ' +
+        aria +
+        ' ' +
+        title +
+        ' ' +
+        value
+      ).toLowerCase();
 
       for (const t of normTexts) {
         if (txt.includes(t)) {
@@ -83,17 +93,21 @@ function parseSalaryText(text: string | null): number | null {
 }
 
 export async function candidatarPorTipo(dto: CreateCandidaturaDto) {
-  const userDataDir = path.resolve(process.cwd(), 'playwright-user-data/default');
-  if (!fs.existsSync(userDataDir)) fs.mkdirSync(userDataDir, { recursive: true });
+  const userDataDir = path.resolve(
+    process.cwd(),
+    'playwright-user-data/default',
+  );
+  if (!fs.existsSync(userDataDir))
+    fs.mkdirSync(userDataDir, { recursive: true });
 
   // usa caminho correto do Chromium dentro do container
   const chromiumPath = chromium.executablePath();
 
   const context = await chromium.launchPersistentContext(userDataDir, {
-    headless: false,
+    headless: true, // <<< MUDAR PARA true
     slowMo: 60,
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
-    executablePath: chromiumPath,
+    executablePath: chromium.executablePath(),
     viewport: { width: 1200, height: 900 },
   });
 
@@ -109,7 +123,9 @@ export async function candidatarPorTipo(dto: CreateCandidaturaDto) {
 
     if (!loggedIn) {
       await saveDebug(page, 'not-logged-in');
-      throw new Error(`Sessão não encontrada em ${userDataDir}. Faça login e reexecute.`);
+      throw new Error(
+        `Sessão não encontrada em ${userDataDir}. Faça login e reexecute.`,
+      );
     }
 
     const q = encodeURIComponent(dto.tipoVaga ?? '');
@@ -122,21 +138,40 @@ export async function candidatarPorTipo(dto: CreateCandidaturaDto) {
     const jobLinks = await page
       .$$eval(
         'a[href*="/jobs/view/"], a[data-control-name="job_card_result_link"], a.result-card__full-card-link, a.job-card-list__title',
-        (els) => Array.from(new Set(els.map((e) => (e as HTMLAnchorElement).href))),
+        (els) =>
+          Array.from(new Set(els.map((e) => (e as HTMLAnchorElement).href))),
       )
       .catch(() => []);
 
-    const blocks = (dto.empresasBloqueadas || []).map((b) => b.toLowerCase().trim()).filter(Boolean);
-    const filtered = (jobLinks || []).filter((url: string) => !blocks.some((b) => url.toLowerCase().includes(b)));
+    const blocks = (dto.empresasBloqueadas || [])
+      .map((b) => b.toLowerCase().trim())
+      .filter(Boolean);
+    const filtered = (jobLinks || []).filter(
+      (url: string) => !blocks.some((b) => url.toLowerCase().includes(b)),
+    );
 
     if (!filtered.length) {
       await saveDebug(page, 'no-job-links-found');
       return { attempted: 0, applied: 0, message: 'Nenhuma vaga encontrada.' };
     }
 
-    const applyTexts = ['easy apply','candidatar-se','apply','inscreva-se','enviar candidatura','candidate-se','candidatar'];
-    const submitTexts = ['send application','submit application','enviar','submit','enviar candidatura'];
-    const nextTexts = ['next','próximo','seguinte','continuar'];
+    const applyTexts = [
+      'easy apply',
+      'candidatar-se',
+      'apply',
+      'inscreva-se',
+      'enviar candidatura',
+      'candidate-se',
+      'candidatar',
+    ];
+    const submitTexts = [
+      'send application',
+      'submit application',
+      'enviar',
+      'submit',
+      'enviar candidatura',
+    ];
+    const nextTexts = ['next', 'próximo', 'seguinte', 'continuar'];
 
     let applied = 0;
     const maxApply = Math.max(1, Math.min(50, dto.maxAplicacoes ?? 6));
@@ -147,24 +182,34 @@ export async function candidatarPorTipo(dto: CreateCandidaturaDto) {
         await page.waitForTimeout(1000);
 
         if (blocks.length) {
-          const pageText = (await page.textContent('body').catch(() => '')) || '';
+          const pageText =
+            (await page.textContent('body').catch(() => '')) || '';
           if (blocks.some((b) => pageText.toLowerCase().includes(b))) continue;
         }
 
         let salaryText: string | null = null;
         const possibleSelectors = [
-          '[data-test-salary]', '.salary', '.salary-snippet', '.salary-range',
-          '.job-criteria__text', '.jobs-unified-top-card__job-insight', '.description',
+          '[data-test-salary]',
+          '.salary',
+          '.salary-snippet',
+          '.salary-range',
+          '.job-criteria__text',
+          '.jobs-unified-top-card__job-insight',
+          '.description',
         ];
         for (const sel of possibleSelectors) {
           const el = await page.$(sel);
           if (el) {
             const txt = (await el.innerText().catch(() => '')).trim();
-            if (txt) { salaryText = txt; break; }
+            if (txt) {
+              salaryText = txt;
+              break;
+            }
           }
         }
         if (!salaryText) {
-          const bodyText = (await page.textContent('body').catch(() => '')) || '';
+          const bodyText =
+            (await page.textContent('body').catch(() => '')) || '';
           const snippet = String(bodyText).match(/(R\$|BRL|\$)\s*\d[\d\.,\s]*/);
           if (snippet) salaryText = snippet[0];
         }
@@ -173,7 +218,10 @@ export async function candidatarPorTipo(dto: CreateCandidaturaDto) {
         if (salary && dto.pretensaoClt && salary < dto.pretensaoClt) continue;
 
         const clickedApply = await clickByTexts(page, applyTexts);
-        if (!clickedApply) { await saveDebug(page, 'no-apply-button'); continue; }
+        if (!clickedApply) {
+          await saveDebug(page, 'no-apply-button');
+          continue;
+        }
 
         await page.waitForTimeout(900);
 
@@ -199,6 +247,8 @@ export async function candidatarPorTipo(dto: CreateCandidaturaDto) {
 
     return { attempted: filtered.length, applied };
   } finally {
-    try { await context.close(); } catch {}
+    try {
+      await context.close();
+    } catch {}
   }
 }
