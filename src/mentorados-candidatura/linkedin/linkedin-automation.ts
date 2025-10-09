@@ -104,7 +104,7 @@ export async function candidatarPorTipo(dto: CreateCandidaturaDto) {
   const chromiumPath = chromium.executablePath();
 
   const context = await chromium.launchPersistentContext(userDataDir, {
-    headless: true, // <<< MUDAR PARA true
+    headless: false, // <<< MUDAR PARA true
     slowMo: 60,
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
     executablePath: chromium.executablePath(),
