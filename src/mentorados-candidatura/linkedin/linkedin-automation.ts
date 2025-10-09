@@ -117,12 +117,12 @@ export async function candidatarPorTipo(dto: CreateCandidaturaDto) {
     fs.mkdirSync(userDataDir, { recursive: true });
 
   const context = await chromium.launchPersistentContext(userDataDir, {
-    executablePath: '/app/.ms-playwright/chromium-1194/chrome-linux/chrome',
     headless: false,
     slowMo: 60,
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
     viewport: { width: 1200, height: 900 },
   });
+
   try {
     const page = await context.newPage();
 
