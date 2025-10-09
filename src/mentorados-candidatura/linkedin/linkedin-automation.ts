@@ -1,4 +1,3 @@
-// backend/src/mentorados-candidatura/linkedin/linkedin-automation.ts
 import fs from 'fs';
 import path from 'path';
 import { chromium, Page } from 'playwright';
@@ -87,7 +86,7 @@ export async function candidatarPorTipo(dto: CreateCandidaturaDto) {
   const userDataDir = path.resolve(process.cwd(), 'playwright-user-data/default');
   if (!fs.existsSync(userDataDir)) fs.mkdirSync(userDataDir, { recursive: true });
 
-  // Usa o chromium.executablePath() para detectar o binário correto no Docker
+  // usa caminho correto do Chromium dentro do container
   const chromiumPath = chromium.executablePath();
 
   const context = await chromium.launchPersistentContext(userDataDir, {
@@ -100,7 +99,6 @@ export async function candidatarPorTipo(dto: CreateCandidaturaDto) {
 
   try {
     const page = await context.newPage();
-
     await page.goto('https://www.linkedin.com/', { waitUntil: 'networkidle' });
     await page.waitForTimeout(1000);
 
@@ -111,7 +109,7 @@ export async function candidatarPorTipo(dto: CreateCandidaturaDto) {
 
     if (!loggedIn) {
       await saveDebug(page, 'not-logged-in');
-      throw new Error(`Sessão não encontrada em ${userDataDir}. Faça login no LinkedIn e reexecute.`);
+      throw new Error(`Sessão não encontrada em ${userDataDir}. Faça login e reexecute.`);
     }
 
     const q = encodeURIComponent(dto.tipoVaga ?? '');
@@ -129,9 +127,7 @@ export async function candidatarPorTipo(dto: CreateCandidaturaDto) {
       .catch(() => []);
 
     const blocks = (dto.empresasBloqueadas || []).map((b) => b.toLowerCase().trim()).filter(Boolean);
-    const filtered = (jobLinks || []).filter(
-      (url: string) => !blocks.some((b) => url.toLowerCase().includes(b)),
-    );
+    const filtered = (jobLinks || []).filter((url: string) => !blocks.some((b) => url.toLowerCase().includes(b)));
 
     if (!filtered.length) {
       await saveDebug(page, 'no-job-links-found');
@@ -196,14 +192,12 @@ export async function candidatarPorTipo(dto: CreateCandidaturaDto) {
         else await saveDebug(page, 'complex-form');
 
         await page.waitForTimeout(1500 + Math.floor(Math.random() * 1400));
-      } catch (err) {
+      } catch {
         await saveDebug(page, 'apply-error');
       }
     }
 
     return { attempted: filtered.length, applied };
-  } catch (err) {
-    throw err;
   } finally {
     try { await context.close(); } catch {}
   }

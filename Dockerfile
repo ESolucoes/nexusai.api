@@ -1,9 +1,6 @@
 # ---------- build ----------
-FROM node:20-alpine AS build
+FROM mcr.microsoft.com/playwright:v1.44.0-focal AS build
 WORKDIR /app
-
-# libs básicas p/ compatibilidade
-RUN apk add --no-cache libc6-compat
 
 # deps com cache
 COPY package*.json ./
@@ -12,38 +9,23 @@ RUN npm ci
 # configs do Nest/TS
 COPY nest-cli.json tsconfig.json tsconfig.build.json ./
 
-# código fonte (inclui src/data-source.ts)
+# código fonte
 COPY src ./src
 
-# build e “slim” de deps
+# build e slim de devDeps
 RUN npm run build
 RUN npm prune --omit=dev
 
 # ---------- runtime ----------
-FROM node:20-alpine AS runtime
+FROM mcr.microsoft.com/playwright:v1.44.0-focal AS runtime
 WORKDIR /app
+
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV NODE_OPTIONS="--experimental-global-webcrypto"
-
-# diretório fixo para browsers (evita cache em /root)
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# libs necessárias para Chromium funcionar no Alpine
-RUN apk add --no-cache \
-    chromium \
-    nss \
-    freetype \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont \
-    fontconfig \
-    bash \
-    lcms2 \
-    udev \
-    dumb-init
-
-# cria o diretório global para browsers e dá permissões
+# diretório global para browsers
 RUN mkdir -p /ms-playwright && chmod a+rX /ms-playwright
 
 # copia build e node_modules
@@ -53,15 +35,12 @@ COPY package*.json ./
 COPY entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
-# instala Chromium via Playwright no caminho definido (não --with-deps)
-# executa como root — os arquivos serão escritos em /ms-playwright
-RUN npx playwright install chromium
-
-# garante que o user 'node' possa ler/exec os browsers
+# garante que user node tenha permissão
 RUN chown -R node:node /ms-playwright
 RUN chmod -R a+rX /ms-playwright
 
 # usa dumb-init como init para melhor handling de signals
+RUN apt-get update && apt-get install -y dumb-init && rm -rf /var/lib/apt/lists/*
 ENTRYPOINT ["dumb-init", "--"]
 
 EXPOSE 3000
