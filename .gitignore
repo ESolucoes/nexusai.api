@@ -58,3 +58,4 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 # Playwright temporary / debug data
 playwright-debug/
 playwright-user-data/
+linkedin-sessions/
