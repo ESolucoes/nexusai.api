@@ -1,5 +1,4 @@
-﻿// src/data-source.ts
-import 'dotenv/config';
+﻿import 'dotenv/config';
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 
@@ -24,6 +23,7 @@ import { RemoverSsi1710000000012 } from './migrations/1710000000012-RemoverSsi';
 import { CriarMentoradoCronograma1710000000013 } from './migrations/1710000000013-CriarMentoradoCronograma';
 import { CriarMentoradosCandidaturas1710000000014 } from './migrations/1710000000014-CriarMentoradosCandidaturas';
 import { AdicionarCamposCandidaturas1710000000015 } from './migrations/1710000000015-AdicionarCamposCandidaturas';
+import { CriarVagasAplicadas1710000000016 } from './migrations/1710000000016-CriarVagasAplicadas'; // NOVA MIGRATION
 
 export default new DataSource({
   type: 'postgres',
@@ -49,7 +49,8 @@ export default new DataSource({
     RemoverSsi1710000000012,
     CriarMentoradoCronograma1710000000013,
     CriarMentoradosCandidaturas1710000000014,
-    AdicionarCamposCandidaturas1710000000015, // migration nova 015
+    AdicionarCamposCandidaturas1710000000015,
+    CriarVagasAplicadas1710000000016, // ADICIONE ESTA LINHA
   ],
   synchronize: false,
   logging: false,
