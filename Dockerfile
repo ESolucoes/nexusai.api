@@ -22,17 +22,20 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV NODE_OPTIONS="--experimental-global-webcrypto"
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-ENV DISPLAY=:99
+ENV NODE_OPTIONS="--experimental-global-webcrypto --max_old_space_size=4096"
 
-# instala Xvfb para simular display gráfico
+# 🔥 CONFIGURAÇÕES COMPATÍVEIS
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV CHROMIUM_PATH=/usr/bin/chromium
+ENV PLAYWRIGHT_EXECUTABLE_PATH=/usr/bin/chromium
+
+# instala dependências adicionais
 RUN apt-get update && \
-    apt-get install -y dumb-init xvfb && \
+    apt-get install -y dumb-init && \
     rm -rf /var/lib/apt/lists/*
 
-# diretório global para browsers (imagem Playwright já fornece permissão correta)
-RUN mkdir -p /ms-playwright
+# cria diretório para aplicação
+RUN mkdir -p /app/dist /app/node_modules
 
 # copia build e node_modules
 COPY --from=build /app/dist ./dist
@@ -41,10 +44,16 @@ COPY package*.json ./
 COPY entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
+# verifica se o Chromium está acessível
+RUN echo "🔍 Verificando Chromium..." && \
+    ls -la /usr/bin/chromium && \
+    /usr/bin/chromium --version && \
+    echo "✅ Chromium verificado"
+
 # dumb-init como init para melhor handling de signals
 ENTRYPOINT ["dumb-init", "--"]
 
 EXPOSE 3000
 
-# usa Xvfb para abrir navegador em modo headful
-CMD ["xvfb-run", "-s", "-screen 0 1280x1024x24", "./entrypoint.sh"]
+# 🔥 COMANDO SIMPLIFICADO
+CMD ["./entrypoint.sh"]

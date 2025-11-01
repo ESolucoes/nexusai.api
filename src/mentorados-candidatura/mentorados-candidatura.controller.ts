@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Get, Req, UseGuards, Param } from '@nestjs/common';
+import { Body, Controller, Post, Get, Req, UseGuards, Param, BadRequestException } from '@nestjs/common';
 import { ApiOperation, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { LinkedInCandidatorService } from './linkedin/linkedin-candidator.service';
 import { IniciarAutomacaoDto } from './dto/iniciar-automacao.dto';
@@ -42,22 +42,32 @@ export class MentoradosCandidaturaController {
     @Req() req: any
   ): Promise<{ success: boolean; results: any[]; message: string }> {
     
-    // Se não veio mentoradoId no body, busca do usuário logado
+    // Validações
+    if (!config.email || !config.password) {
+      throw new BadRequestException('Email e senha são obrigatórios');
+    }
+
+    if (!config.tipoVaga || config.tipoVaga.trim() === '') {
+      throw new BadRequestException('Tipo de vaga é obrigatório');
+    }
+
+    // Buscar mentoradoId do usuário logado se não fornecido
     let mentoradoId = config.mentoradoId;
     if (!mentoradoId) {
       const usuarioId = req.user.id;
       const mentorado = await this.mentoradosService.buscarPorUsuarioId(usuarioId);
       if (!mentorado) {
-        throw new Error('Mentorado não encontrado para este usuário');
+        throw new BadRequestException('Mentorado não encontrado para este usuário');
       }
       mentoradoId = mentorado.id;
     }
 
-    // Converte DTO para o formato esperado pelo serviço
+    // Configuração com valores padrão
     const serviceConfig = {
       ...config,
       mentoradoId,
       empresasBloqueadas: config.empresasBloqueadas || [],
+      maxAplicacoes: config.maxAplicacoes || 5,
       respostasChat: config.respostasChat || {
         disponibilidade: '',
         avisoPrevio: '',
@@ -70,6 +80,8 @@ export class MentoradosCandidaturaController {
         respostaPadrao: ''
       }
     };
+    
+    console.log(`🎯 Iniciando automação para mentorado: ${mentoradoId}`);
     
     return this.linkedinCandidator.iniciarAutomacaoCompleta(serviceConfig);
   }

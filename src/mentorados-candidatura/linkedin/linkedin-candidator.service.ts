@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { chromium, Browser, BrowserContext, Page } from 'playwright';
+import { chromium, Browser, Page } from 'playwright';
 import { MentoradosService } from '../../mentorados/mentorados.service';
 import { RespostasChatConfig } from '../dto/iniciar-automacao.dto';
 import { VagaAplicada } from '../entities/vaga-aplicada.entity';
@@ -29,7 +29,7 @@ export interface AutomacaoConfig {
 @Injectable()
 export class LinkedInCandidatorService {
   private readonly logger = new Logger(LinkedInCandidatorService.name);
-  private readonly vagasAplicadas = new Set<string>(); // Cache em memória para a sessão
+  private readonly vagasAplicadas = new Set<string>();
 
   constructor(
     private readonly mentoradosService: MentoradosService,
@@ -38,35 +38,35 @@ export class LinkedInCandidatorService {
   ) {}
 
   /**
-   * AUTOMAÇÃO SIMPLIFICADA - APENAS CLICA EM NEXT NO MODAL
+   * AUTOMAÇÃO COMPATÍVEL DEV/PROD
    */
   async iniciarAutomacaoCompleta(config: AutomacaoConfig): Promise<{ success: boolean; results: CandidaturaResult[]; message: string }> {
     
     if (!config.mentoradoId || config.mentoradoId.trim() === '') {
-      throw new BadRequestException('ID do mentorado é obrigatório e não pode estar vazio');
+      throw new BadRequestException('ID do mentorado é obrigatório');
     }
 
     let browser: Browser | null = null;
-    let context: BrowserContext | null = null;
     const results: CandidaturaResult[] = [];
 
     try {
-      this.logger.log('🚀 INICIANDO AUTOMAÇÃO SIMPLIFICADA...');
+      this.logger.log('🚀 INICIANDO AUTOMAÇÃO LINKEDIN...');
       this.logger.log(`📋 Mentorado ID: ${config.mentoradoId}`);
+      this.logger.log(`🌍 Ambiente: ${process.env.NODE_ENV}`);
+      this.logger.log(`🔧 Headless: ${process.env.NODE_ENV === 'production' ? 'true' : 'false'}`);
 
-      // Limpa cache de vagas aplicadas para nova execução
+      // Limpa cache
       this.vagasAplicadas.clear();
 
-      // BUSCA VAGAS JÁ APLICADAS EM EXECUÇÕES ANTERIORES
+      // Busca vagas aplicadas anteriormente
       const vagasAplicadasAnteriormente = await this.buscarVagasAplicadasAnteriormente(config.mentoradoId);
       this.logger.log(`📊 ${vagasAplicadasAnteriormente.length} vagas aplicadas em execuções anteriores`);
 
-      // Adiciona as vagas do banco ao cache da sessão
       vagasAplicadasAnteriormente.forEach(vaga => {
         this.vagasAplicadas.add(vaga.jobUrl);
       });
 
-      // BUSCA INFORMAÇÕES DO MENTORADO
+      // Busca mentorado
       let mentorado;
       try {
         mentorado = await this.mentoradosService.buscarPorId(config.mentoradoId);
@@ -76,72 +76,71 @@ export class LinkedInCandidatorService {
         throw new NotFoundException(`Mentorado com ID ${config.mentoradoId} não encontrado`);
       }
 
-      if (!mentorado) {
-        throw new NotFoundException(`Mentorado com ID ${config.mentoradoId} não encontrado`);
+      // 🔥 CONFIGURAÇÃO COMPATÍVEL DEV/PROD
+      const launchOptions: any = {
+        // Headless baseado no ambiente
+        headless: process.env.NODE_ENV === 'production' ? true : false,
+        
+        // SlowMo apenas em desenvolvimento
+        slowMo: process.env.NODE_ENV === 'production' ? 0 : 100,
+        
+        args: [
+          '--no-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--disable-web-security',
+          '--window-size=1920,1080',
+          '--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        ],
+        timeout: 120000
+      };
+
+      // 🔥 CONFIGURAÇÃO DE EXECUTABLE_PATH INTELIGENTE
+      if (process.env.NODE_ENV === 'production' && process.env.CHROMIUM_PATH) {
+        launchOptions.executablePath = process.env.CHROMIUM_PATH;
+        this.logger.log(`🔧 Usando Chromium em: ${process.env.CHROMIUM_PATH}`);
+      } else {
+        this.logger.log('🔧 Playwright encontrará Chromium automaticamente');
       }
 
-      // CONFIGURAÇÃO DO BROWSER
-      browser = await chromium.launch({
-        headless: false,
-        slowMo: 100,
-        args: [
-          '--no-sandbox', 
-          '--disable-dev-shm-usage', 
-          '--start-maximized',
-          '--disable-blink-features=AutomationControlled',
-          '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        ]
-      });
+      browser = await chromium.launch(launchOptions);
 
-      context = await browser.newContext({
-        viewport: null,
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      const context = await browser.newContext({
+        viewport: { width: 1920, height: 1080 },
+        userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        ignoreHTTPSErrors: true
       });
 
       const page = await context.newPage();
       
-      // Configura timeouts
-      page.setDefaultTimeout(30000);
-      page.setDefaultNavigationTimeout(30000);
+      // Configurar timeouts
+      page.setDefaultTimeout(120000);
+      page.setDefaultNavigationTimeout(120000);
 
-      // PASSO 1: LOGIN
-      this.logger.log('🔐 Fazendo login...');
-      await page.goto('https://www.linkedin.com/login', { 
-        waitUntil: 'domcontentloaded'
-      });
-      await this.delay(3000);
-
-      // Preenche credenciais
-      await page.fill('#username', config.email);
-      await this.delay(1000);
-      await page.fill('#password', config.password);
-      await this.delay(1000);
-
-      // Login
-      await page.click('button[type="submit"]');
-      await this.delay(5000);
-
-      // Verifica se login foi bem sucedido
-      if (page.url().includes('checkpoint') || page.url().includes('login')) {
-        throw new Error('Login falhou - verifique credenciais');
+      // LOGIN
+      this.logger.log('🔐 Realizando login no LinkedIn...');
+      const loginSucesso = await this.realizarLoginUniversal(page, config.email, config.password);
+      
+      if (!loginSucesso) {
+        throw new Error('Falha no login - verifique credenciais');
       }
 
-      // PASSO 2: PESQUISAR VAGAS
-      this.logger.log(`🔍 Pesquisando: ${config.tipoVaga}`);
-      await page.goto('https://www.linkedin.com/jobs/', { 
-        waitUntil: 'domcontentloaded'
-      });
-      await this.delay(4000);
+      this.logger.log('✅ Login realizado com sucesso!');
 
-      // Pesquisa
-      await this.realizarPesquisa(page, config.tipoVaga);
-      await this.delay(5000);
+      // PASSO 2: PESQUISAR VAGAS
+      this.logger.log(`🔍 Pesquisando vagas: "${config.tipoVaga}"`);
+      await page.goto(`https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(config.tipoVaga)}`, {
+        waitUntil: 'networkidle',
+        timeout: 30000
+      });
+
+      await this.delay(3000);
 
       // Coletar vagas
       await this.scrollLentamente(page);
-      await this.delay(3000);
+      await this.delay(2000);
 
-      const jobLinks = await this.coletarVagas(page, config.maxAplicacoes * 3); // Coleta mais vagas para compensar as já aplicadas
+      const jobLinks = await this.coletarVagas(page, config.maxAplicacoes * 3);
       this.logger.log(`🎯 ${jobLinks.length} vagas encontradas inicialmente`);
 
       // FILTRAR VAGAS JÁ APLICADAS
@@ -180,14 +179,13 @@ export class LinkedInCandidatorService {
             continue;
           }
 
-          this.logger.log(`📝 Vaga ${i + 1}/${vagasFiltradas.length}: ${vaga.title} - ${vaga.company}`);
+          this.logger.log(`📝 Processando vaga ${i + 1}/${vagasFiltradas.length}: ${vaga.title} - ${vaga.company}`);
           
           const result = await this.aplicarParaVaga(page, vaga);
           results.push(result);
           
           if (result.applied) {
             aplicacoesRealizadas++;
-            // Adiciona ao cache de vagas aplicadas E salva no banco
             this.vagasAplicadas.add(vaga.url);
             await this.salvarVagaAplicada(config.mentoradoId, vaga);
             this.logger.log(`✅ APLICAÇÃO ${aplicacoesRealizadas}/${config.maxAplicacoes} REALIZADA!`);
@@ -195,8 +193,7 @@ export class LinkedInCandidatorService {
             this.logger.log(`❌ Falha na aplicação: ${result.error}`);
           }
           
-          // Delay entre aplicações
-          await this.delay(5000 + Math.random() * 3000);
+          await this.delay(3000 + Math.random() * 2000);
           
         } catch (error: any) {
           this.logger.error(`❌ Erro na vaga ${i + 1}:`, error.message);
@@ -229,10 +226,92 @@ export class LinkedInCandidatorService {
       };
     } finally {
       this.logger.log('💻 Automação finalizada');
-      // Fecha o browser
       if (browser) {
         await browser.close().catch(() => {});
       }
+    }
+  }
+
+  /**
+   * LOGIN UNIVERSAL - FUNCIONA EM TODOS OS AMBIENTES
+   */
+  private async realizarLoginUniversal(page: Page, email: string, password: string): Promise<boolean> {
+    try {
+      this.logger.log('🔐 Iniciando processo de login...');
+
+      // Vá para a página de login
+      await page.goto('https://www.linkedin.com/login', {
+        waitUntil: 'networkidle',
+        timeout: 30000
+      });
+
+      await this.delay(2000);
+
+      // Verificar se já está logado
+      if (await this.verificarSeEstaLogado(page)) {
+        this.logger.log('✅ Já está logado!');
+        return true;
+      }
+
+      this.logger.log('📧 Preenchendo email...');
+      await page.fill('#username', email);
+      await this.delay(1000);
+
+      this.logger.log('🔑 Preenchendo senha...');
+      await page.fill('#password', password);
+      await this.delay(1000);
+
+      this.logger.log('🖱️ Clicando no botão de login...');
+      await page.click('button[type="submit"]');
+      await this.delay(5000);
+
+      // Verificar se login foi bem sucedido
+      const loginSucesso = await this.verificarSeEstaLogado(page);
+      
+      if (loginSucesso) {
+        this.logger.log('✅ Login realizado com sucesso!');
+        return true;
+      } else {
+        this.logger.error('❌ Falha no login - verifique credenciais');
+        return false;
+      }
+
+    } catch (error: any) {
+      this.logger.error(`❌ Erro no login: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * VERIFICAÇÃO DE LOGIN
+   */
+  private async verificarSeEstaLogado(page: Page): Promise<boolean> {
+    try {
+      // Verificações básicas de login
+      const loggedInIndicators = [
+        'nav.global-nav',
+        'div[data-test-global-nav-header]',
+        'img.global-nav__me-photo',
+        'a[data-control-name="identity_profile_photo"]',
+        'input[role="combobox"]', // Search bar
+        'a[href*="/feed/"]' // Feed link
+      ];
+
+      for (const selector of loggedInIndicators) {
+        const element = await page.$(selector);
+        if (element && await element.isVisible()) {
+          return true;
+        }
+      }
+
+      // Verificar URL
+      const currentUrl = page.url();
+      return currentUrl.includes('/feed/') || 
+             currentUrl.includes('/mynetwork/') ||
+             !currentUrl.includes('/login');
+
+    } catch (error) {
+      return false;
     }
   }
 
@@ -275,19 +354,16 @@ export class LinkedInCandidatorService {
    * VERIFICA SE VAGA JÁ FOI APLICADA (BANCO + CACHE)
    */
   private async verificarSeVagaJaFoiAplicada(jobUrl: string): Promise<boolean> {
-    // Verifica primeiro no cache da sessão (mais rápido)
     if (this.vagasAplicadas.has(jobUrl)) {
       return true;
     }
 
-    // Verifica no banco de dados
     try {
       const vagaExistente = await this.vagaAplicadaRepository.findOne({
         where: { jobUrl }
       });
       
       if (vagaExistente) {
-        // Adiciona ao cache para próximas verificações
         this.vagasAplicadas.add(jobUrl);
         return true;
       }
@@ -310,38 +386,32 @@ export class LinkedInCandidatorService {
       const vaga = jobLinks[i];
       
       try {
-        // Verifica se já aplicou em execuções anteriores (banco) ou nesta sessão (cache)
         const jaAplicada = await this.verificarSeVagaJaFoiAplicada(vaga.url);
         if (jaAplicada) {
           this.logger.log(`⏭️ Vaga já aplicada (histórico): ${vaga.title}`);
           continue;
         }
 
-        // Abre a vaga para verificar status no LinkedIn
         await page.goto(vaga.url, { 
           waitUntil: 'domcontentloaded',
           timeout: 10000
         });
-        await this.delay(2000);
+        await this.delay(1500);
 
-        // Verifica se já aplicou (múltiplos indicadores no LinkedIn)
         const jaAplicadoLinkedIn = await this.verificarSeJaAplicouNoLinkedIn(page);
         
         if (jaAplicadoLinkedIn) {
           this.logger.log(`⏭️ Vaga já aplicada no LinkedIn: ${vaga.title}`);
-          // Adiciona ao cache e salva no banco
           this.vagasAplicadas.add(vaga.url);
-          await this.salvarVagaAplicada('sistema', vaga); // Salva como detectada pelo sistema
+          await this.salvarVagaAplicada('sistema', vaga);
           continue;
         }
 
-        // Se passou por todas as verificações, adiciona à lista
         vagasFiltradas.push(vaga);
         this.logger.log(`✅ Vaga disponível: ${vaga.title}`);
 
       } catch (error) {
         this.logger.log(`⚠️ Erro ao verificar vaga ${vaga.title}: ${error.message}`);
-        // Em caso de erro, considera como disponível para tentar aplicar
         vagasFiltradas.push(vaga);
       }
     }
@@ -350,11 +420,10 @@ export class LinkedInCandidatorService {
   }
 
   /**
-   * VERIFICA SE JÁ APLICOU NA VAGA NO LINKEDIN (MÚLTIPLOS MÉTODOS)
+   * VERIFICA SE JÁ APLICOU NA VAGA NO LINKEDIN
    */
   private async verificarSeJaAplicouNoLinkedIn(page: Page): Promise<boolean> {
     try {
-      // Método 1: Verifica indicador visual de aplicação
       const selectorsAplicado = [
         '.artdeco-inline-feedback--success',
         '[aria-label*="applied"]',
@@ -362,55 +431,41 @@ export class LinkedInCandidatorService {
         '.jobs-apply-button--applied',
         'button[aria-label*="Applied"]',
         'button[aria-label*="Aplicado"]',
-        '.artdeco-inline-feedback__message',
         'span:has-text("Applied")',
-        'span:has-text("Aplicado")',
-        'span:has-text("Candidatura enviada")'
+        'span:has-text("Aplicado")'
       ];
 
       for (const selector of selectorsAplicado) {
         const elemento = await page.$(selector);
         if (elemento && await elemento.isVisible()) {
-          const texto = await elemento.textContent();
-          if (texto && (texto.includes('Applied') || texto.includes('Aplicado') || texto.includes('enviada'))) {
-            return true;
-          }
-        }
-      }
-
-      // Método 2: Verifica se o botão de aplicação está desativado ou mudou
-      const botaoApply = await page.$('button[aria-label*="Easy Apply"], button[aria-label*="Candidatura simplificada"], .jobs-apply-button');
-      if (botaoApply) {
-        const isDisabled = await botaoApply.getAttribute('disabled');
-        const ariaLabel = await botaoApply.getAttribute('aria-label') || '';
-        const texto = await botaoApply.textContent() || '';
-        
-        if (isDisabled !== null || 
-            ariaLabel.includes('Applied') || 
-            ariaLabel.includes('Aplicado') ||
-            texto.includes('Applied') ||
-            texto.includes('Aplicado')) {
           return true;
         }
       }
 
-      // Método 3: Verifica texto na página indicando aplicação
-      const pageText = await page.textContent('body') || '';
-      if (pageText.includes('You have applied') || 
-          pageText.includes('Você se candidatou') ||
-          pageText.includes('Candidatura enviada')) {
-        return true;
+      const botaoApply = await page.$('button[aria-label*="Easy Apply"], button[aria-label*="Candidatura simplificada"], .jobs-apply-button');
+      if (botaoApply) {
+        const isDisabled = await botaoApply.getAttribute('disabled');
+        const ariaLabel = (await botaoApply.getAttribute('aria-label') || '').toLowerCase();
+        const texto = (await botaoApply.textContent() || '').toLowerCase();
+        
+        if (isDisabled !== null || 
+            ariaLabel.includes('applied') || 
+            ariaLabel.includes('aplicado') ||
+            texto.includes('applied') ||
+            texto.includes('aplicado')) {
+          return true;
+        }
       }
 
       return false;
     } catch (error) {
-      this.logger.log('Erro ao verificar se já aplicou no LinkedIn, considerando como não aplicado');
+      this.logger.log('Erro ao verificar se já aplicou no LinkedIn');
       return false;
     }
   }
 
   /**
-   * MÉTODO SIMPLIFICADO PARA CLICAR NO BOTÃO EASY APPLY
+   * CLICA NO BOTÃO EASY APPLY
    */
   private async clicarBotaoCandidaturaFacil(page: Page): Promise<boolean> {
     try {
@@ -421,32 +476,26 @@ export class LinkedInCandidatorService {
         'button[aria-label*="Easy Apply"]',
         'button[data-easy-apply="true"]',
         '.jobs-apply-button',
-        '.jobs-apply-button--top-card'
+        '.jobs-apply-button--top-card',
+        'button:has-text("Easy Apply")',
+        'button:has-text("Candidatura simplificada")'
       ];
 
       for (const selector of selectors) {
         try {
-          const button = await page.waitForSelector(selector, { 
-            timeout: 3000
-          }).catch(() => null);
-
-          if (button) {
-            const isVisible = await button.isVisible();
-            const isEnabled = await button.isEnabled();
+          const button = await page.$(selector);
+          if (button && await button.isVisible() && await button.isEnabled()) {
+            await button.scrollIntoViewIfNeeded();
+            await this.delay(500);
             
-            if (isVisible && isEnabled) {
-              await button.scrollIntoViewIfNeeded();
-              await this.delay(1000);
-              
-              await button.click();
-              await this.delay(3000);
-              
-              // Verifica se o modal abriu
-              const modalAberto = await page.$('.jobs-easy-apply-modal, [data-test-modal]');
-              if (modalAberto) {
-                this.logger.log('✅ Modal de candidatura aberto!');
-                return true;
-              }
+            this.logger.log(`🖱️ Clicando no botão: ${selector}`);
+            await button.click();
+            await this.delay(2000);
+            
+            const modalAberto = await page.$('.jobs-easy-apply-modal, [data-test-modal], .artdeco-modal');
+            if (modalAberto) {
+              this.logger.log('✅ Modal de candidatura aberto!');
+              return true;
             }
           }
         } catch (error) {
@@ -454,31 +503,7 @@ export class LinkedInCandidatorService {
         }
       }
 
-      // Fallback por texto
-      const textosBotao = [
-        'Candidatura simplificada',
-        'Easy Apply', 
-        'Candidatar-se'
-      ];
-
-      for (const texto of textosBotao) {
-        try {
-          const buttonByText = await page.$(`button:has-text("${texto}")`);
-          if (buttonByText && await buttonByText.isVisible()) {
-            await buttonByText.scrollIntoViewIfNeeded();
-            await this.delay(1000);
-            await buttonByText.click();
-            await this.delay(3000);
-            
-            const modalAberto = await page.$('.jobs-easy-apply-modal');
-            if (modalAberto) return true;
-          }
-        } catch (error) {
-          continue;
-        }
-      }
-
-      this.logger.log('❌ Nenhum botão de candidatura fácil funcionou');
+      this.logger.log('❌ Nenhum botão de candidatura fácil encontrado');
       return false;
 
     } catch (error) {
@@ -488,7 +513,7 @@ export class LinkedInCandidatorService {
   }
 
   /**
-   * APLICA PARA VAGA - VERSÃO SIMPLIFICADA
+   * APLICA PARA VAGA
    */
   private async aplicarParaVaga(
     page: Page, 
@@ -505,13 +530,12 @@ export class LinkedInCandidatorService {
     };
 
     try {
-      // Abre vaga
+      this.logger.log(`🌐 Acessando vaga: ${vaga.title}`);
       await page.goto(vaga.url, { 
         waitUntil: 'domcontentloaded'
       });
-      await this.delay(3000);
+      await this.delay(2000);
 
-      // Verificação final antes de aplicar
       const jaAplicada = await this.verificarSeVagaJaFoiAplicada(vaga.url);
       if (jaAplicada) {
         result.error = 'Já aplicado anteriormente (histórico)';
@@ -521,12 +545,10 @@ export class LinkedInCandidatorService {
       const jaAplicadoLinkedIn = await this.verificarSeJaAplicouNoLinkedIn(page);
       if (jaAplicadoLinkedIn) {
         result.error = 'Já aplicado no LinkedIn';
-        // Salva no banco pois detectamos que já foi aplicada
         await this.salvarVagaAplicada('sistema', vaga);
         return result;
       }
 
-      // Clica no botão Easy Apply
       const botaoClicado = await this.clicarBotaoCandidaturaFacil(page);
       
       if (!botaoClicado) {
@@ -534,7 +556,6 @@ export class LinkedInCandidatorService {
         return result;
       }
 
-      // PROCESSO SIMPLIFICADO: APENAS CLICA EM NEXT ATÉ FINALIZAR
       result.applied = await this.processarCandidaturaSimplificada(page);
 
       if (result.applied) {
@@ -551,22 +572,24 @@ export class LinkedInCandidatorService {
   }
 
   /**
-   * PROCESSADOR SIMPLIFICADO - APENAS CLICA EM NEXT (CORRIGIDO)
+   * PROCESSADOR SIMPLIFICADO - APENAS CLICA EM NEXT
    */
   private async processarCandidaturaSimplificada(page: Page): Promise<boolean> {
     try {
       let tentativas = 0;
-      const maxTentativas = 10;
+      const maxTentativas = 6;
 
       while (tentativas < maxTentativas) {
-        await this.delay(2000);
+        await this.delay(1500);
 
-        // PRIMEIRO: Tenta encontrar botão SUBMIT final
+        // Primeiro tenta encontrar e clicar em SUBMIT
         const submitSelectors = [
           '[aria-label="Submit application"]',
           '[aria-label="Enviar candidatura"]',
           'button:has-text("Submit application")',
-          'button:has-text("Enviar candidatura")'
+          'button:has-text("Enviar candidatura")',
+          'button[aria-label*="Submit"]',
+          'button[aria-label*="Enviar"]'
         ];
 
         for (const selector of submitSelectors) {
@@ -574,23 +597,27 @@ export class LinkedInCandidatorService {
           if (botaoSubmit && await botaoSubmit.isEnabled()) {
             this.logger.log(`🎯 Clicando em SUBMIT: ${selector}`);
             
-            // Tenta clicar de diferentes formas
-            const cliqueSucesso = await this.tentarClicarDeVariasFormas(page, botaoSubmit);
+            await botaoSubmit.click();
+            await this.delay(2000);
             
-            if (cliqueSucesso) {
-              await this.delay(3000);
-              
-              // Verifica sucesso
-              const successIndicator = await page.$('.artdeco-inline-feedback--success, [aria-label*="submitted"]');
-              if (successIndicator) {
-                this.logger.log('✅ CANDIDATURA ENVIADA COM SUCESSO!');
-                return true;
-              }
+            const successIndicator = await page.$('.artdeco-inline-feedback--success, [aria-label*="applied"], [aria-label*="aplicado"]');
+            if (successIndicator) {
+              this.logger.log('✅ CANDIDATURA ENVIADA COM SUCESSO!');
+              return true;
             }
+            
+            // Verificar se modal fechou (indica sucesso)
+            const modalFechou = !(await page.$('.jobs-easy-apply-modal, [data-test-modal]'));
+            if (modalFechou) {
+              this.logger.log('✅ Candidatura enviada (modal fechado)');
+              return true;
+            }
+            
+            return true;
           }
         }
 
-        // SEGUNDO: Tenta NEXT/CONTINUE
+        // Se não encontrou submit, tenta NEXT
         const nextSelectors = [
           '[aria-label="Continue to next step"]',
           '[aria-label="Next"]',
@@ -598,69 +625,54 @@ export class LinkedInCandidatorService {
           'button:has-text("Next")',
           'button:has-text("Continue")',
           'button:has-text("Avançar")',
-          'button.artdeco-button--primary' // Seletores mais genéricos
+          'button.artdeco-button--primary:not([disabled])'
         ];
 
         let nextClicado = false;
         for (const selector of nextSelectors) {
           const botaoNext = await page.$(selector);
           if (botaoNext && await botaoNext.isEnabled()) {
-            this.logger.log(`⏭️ Tentando clicar em NEXT: ${selector}`);
+            this.logger.log(`⏭️ Clicando em NEXT: ${selector}`);
             
-            // Tenta clicar de diferentes formas
-            const cliqueSucesso = await this.tentarClicarDeVariasFormas(page, botaoNext);
-            
-            if (cliqueSucesso) {
-              this.logger.log(`✅ Clique em NEXT bem-sucedido: ${selector}`);
-              await this.delay(2000);
-              nextClicado = true;
-              tentativas++;
-              break;
-            } else {
-              this.logger.log(`❌ Falha ao clicar em: ${selector}`);
-            }
+            await botaoNext.click();
+            await this.delay(1500);
+            nextClicado = true;
+            tentativas++;
+            break;
           }
         }
 
         if (!nextClicado) {
-          // TERCEIRO: Verifica se tem campos que precisam de respostas escritas
+          // Verifica se há campos para preencher
           const camposParaPreencher = await this.verificarCamposParaPreencher(page);
           if (camposParaPreencher) {
-            this.logger.log('⚠️ Encontrou campos que precisam de respostas escritas - Cancelando aplicação');
+            this.logger.log('⚠️ Campos que precisam de respostas - Cancelando');
             await this.descartarCandidatura(page);
-            return false; // Não conta como aplicação realizada
+            return false;
           }
 
-          // QUARTO: Tenta encontrar botão de fechar (caso tenha concluído)
+          // Verifica se já terminou
           const closeButton = await page.$('[aria-label="Dismiss"], .artdeco-modal__dismiss');
           if (closeButton) {
-            this.logger.log('✅ Candidatura concluída (botão fechar encontrado)');
+            this.logger.log('✅ Candidatura concluída');
             return true;
           }
           
-          // QUINTO: Se não encontrou nenhum botão, verifica se ainda há formulário
-          const formAtual = await page.$('input, textarea, select');
-          if (!formAtual) {
-            this.logger.log('✅ Nenhum campo encontrado - candidatura concluída');
-            return true;
-          }
-          
-          this.logger.log('⚠️ Nenhum botão NEXT/SUBMIT encontrado nesta etapa');
+          this.logger.log('⚠️ Nenhum botão encontrado nesta etapa');
           break;
         }
       }
 
-      // Só descarta se atingiu o limite de tentativas
       if (tentativas >= maxTentativas) {
-        this.logger.log('❌ Limite de tentativas atingido - Cancelando aplicação');
+        this.logger.log('❌ Limite de tentativas atingido');
         await this.descartarCandidatura(page);
       }
 
       return false;
 
     } catch (error) {
-      this.logger.error('Erro no processamento - Cancelando aplicação:', error);
-      await this.descartarCandidatura(page).catch(() => {}); // Tenta descartar mesmo com erro
+      this.logger.error('Erro no processamento:', error);
+      await this.descartarCandidatura(page).catch(() => {});
       return false;
     }
   }
@@ -670,7 +682,6 @@ export class LinkedInCandidatorService {
    */
   private async verificarCamposParaPreencher(page: Page): Promise<boolean> {
     try {
-      // Procura por campos de texto vazios que precisam ser preenchidos
       const camposTexto = await page.$$('input[type="text"], textarea');
       
       for (const campo of camposTexto) {
@@ -678,18 +689,10 @@ export class LinkedInCandidatorService {
           const isVisible = await campo.isVisible();
           const isEnabled = await campo.isEnabled();
           const valorAtual = await campo.inputValue();
-          const placeholder = await campo.getAttribute('placeholder') || '';
-          const ariaLabel = await campo.getAttribute('aria-label') || '';
           
-          // Se é um campo visível, habilitado e vazio, precisa de resposta
           if (isVisible && isEnabled && !valorAtual) {
-            const textoCampo = (placeholder + ' ' + ariaLabel).toLowerCase();
-            
-            // Ignora campos de busca ou que não são perguntas
-            if (!textoCampo.includes('search') && !textoCampo.includes('buscar')) {
-              this.logger.log(`📝 Campo encontrado que precisa de resposta: ${textoCampo.substring(0, 50)}`);
-              return true;
-            }
+            this.logger.log('📝 Campo encontrado que precisa de resposta');
+            return true;
           }
         } catch (error) {
           continue;
@@ -698,13 +701,12 @@ export class LinkedInCandidatorService {
 
       return false;
     } catch (error) {
-      this.logger.log('Erro ao verificar campos para preencher');
       return false;
     }
   }
 
   /**
-   * DESCARTAR CANDIDATURA - CLICA NO BOTÃO DE DESCARTE
+   * DESCARTAR CANDIDATURA
    */
   private async descartarCandidatura(page: Page): Promise<boolean> {
     try {
@@ -716,7 +718,7 @@ export class LinkedInCandidatorService {
         'button:has-text("Discard")',
         'button:has-text("Descartar")',
         '.artdeco-modal__dismiss',
-        '[data-test-modal-close-btn]'
+        'button[data-test-modal-close-btn]'
       ];
 
       for (const selector of descartarSelectors) {
@@ -724,47 +726,36 @@ export class LinkedInCandidatorService {
         if (botaoDescartar && await botaoDescartar.isVisible()) {
           this.logger.log(`🗑️  Clicando em descartar: ${selector}`);
           
-          // Tenta clicar de diferentes formas
-          const cliqueSucesso = await this.tentarClicarDeVariasFormas(page, botaoDescartar);
+          await botaoDescartar.click();
+          await this.delay(1500);
           
-          if (cliqueSucesso) {
-            await this.delay(2000);
-            
-            // Confirma descarte se houver popup de confirmação
-            const confirmarSelectors = [
-              '[data-test-dialog-primary-btn]',
-              'button:has-text("Confirm")',
-              'button:has-text("Confirmar")',
-              '.artdeco-button--primary'
-            ];
+          // Confirmar descarte se necessário
+          const confirmarSelectors = [
+            '[data-test-dialog-primary-btn]',
+            'button:has-text("Confirm")',
+            'button:has-text("Confirmar")',
+            'button:has-text("Yes")',
+            'button:has-text("Sim")'
+          ];
 
-            for (const confirmSelector of confirmarSelectors) {
-              const botaoConfirmar = await page.$(confirmSelector);
-              if (botaoConfirmar && await botaoConfirmar.isVisible()) {
-                await botaoConfirmar.click();
-                await this.delay(2000);
-                break;
-              }
+          for (const confirmSelector of confirmarSelectors) {
+            const botaoConfirmar = await page.$(confirmSelector);
+            if (botaoConfirmar && await botaoConfirmar.isVisible()) {
+              await botaoConfirmar.click();
+              await this.delay(1500);
+              break;
             }
-
-            this.logger.log('✅ Candidatura descartada com sucesso');
-            return true;
           }
+
+          this.logger.log('✅ Candidatura descartada');
+          return true;
         }
       }
 
-      // Se não encontrou botão de descartar, tenta fechar o modal de outras formas
-      this.logger.log('⚠️ Botão de descartar não encontrado, tentando fechar modal...');
-      
-      // Tenta ESC para fechar
+      // Fallback: pressionar Escape
       await page.keyboard.press('Escape');
-      await this.delay(2000);
+      await this.delay(1500);
 
-      // Tenta clicar fora do modal
-      await page.mouse.click(10, 10);
-      await this.delay(2000);
-
-      this.logger.log('✅ Modal fechado');
       return true;
 
     } catch (error) {
@@ -774,126 +765,30 @@ export class LinkedInCandidatorService {
   }
 
   /**
-   * TENTA CLICAR DE VÁRIAS FORMAS PARA EVITAR INTERCEPTAÇÃO
-   */
-  private async tentarClicarDeVariasFormas(page: Page, element: any): Promise<boolean> {
-    const metodosClique = [
-      // Método 1: Clique normal
-      async () => {
-        await element.click({ timeout: 5000 });
-        return true;
-      },
-      
-      // Método 2: Clique via JavaScript (evita interceptação)
-      async () => {
-        await page.evaluate((el: HTMLElement) => {
-          el.click();
-        }, element);
-        return true;
-      },
-      
-      // Método 3: Clique via dispatchEvent
-      async () => {
-        await element.dispatchEvent('click');
-        return true;
-      },
-      
-      // Método 4: Clique via coordenadas (ignora elementos sobrepostos)
-      async () => {
-        const box = await element.boundingBox();
-        if (box) {
-          await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-          return true;
-        }
-        return false;
-      },
-      
-      // Método 5: Clique via Enter
-      async () => {
-        await element.focus();
-        await page.keyboard.press('Enter');
-        return true;
-      },
-      
-      // Método 6: Clique via Space
-      async () => {
-        await element.focus();
-        await page.keyboard.press('Space');
-        return true;
-      },
-      
-      // Método 7: Force click via JavaScript
-      async () => {
-        await page.evaluate((el: HTMLElement) => {
-          const event = new MouseEvent('click', {
-            view: window,
-            bubbles: true,
-            cancelable: true
-          });
-          el.dispatchEvent(event);
-        }, element);
-        return true;
-      }
-    ];
-
-    for (const metodo of metodosClique) {
-      try {
-        await metodo();
-        this.logger.log('✅ Clique realizado com sucesso');
-        return true;
-      } catch (error) {
-        this.logger.log(`⚠️ Método de clique falhou, tentando próximo...`);
-        await this.delay(500);
-        continue;
-      }
-    }
-    
-    return false;
-  }
-
-  /**
    * MÉTODOS AUXILIARES
    */
-  private async realizarPesquisa(page: Page, tipoVaga: string): Promise<void> {
-    const searchSelectors = [
-      'input[aria-label*="Pesquisar cargo"]',
-      'input[aria-label*="Search jobs"]',
-      'input.search-box__input'
-    ];
-
-    for (const selector of searchSelectors) {
-      const searchInput = await page.$(selector);
-      if (searchInput) {
-        await searchInput.click();
-        await this.delay(1000);
-        await page.keyboard.type(tipoVaga);
-        await this.delay(1000);
-        await page.keyboard.press('Enter');
-        this.logger.log('✅ Pesquisa realizada');
-        return;
-      }
-    }
-
-    this.logger.log('⚠️ Campo de pesquisa não encontrado, continuando...');
-  }
-
   private async coletarVagas(page: Page, maxAplicacoes: number): Promise<any[]> {
-    return await page.$$eval(
-      '.job-card-container, .job-card-list', 
-      (cards: HTMLElement[], max: number) => 
-        cards.slice(0, max).map(card => {
-          const link = card.querySelector('a[href*="/jobs/view/"]') as HTMLAnchorElement;
-          const company = card.querySelector('.job-card-company-name, [class*="company-name"]') as HTMLElement;
-          const title = card.querySelector('.job-card-list__title, [class*="job-title"]') as HTMLElement;
-          
-          return {
-            url: link?.href || '',
-            title: title?.textContent?.trim() || 'Vaga LinkedIn',
-            company: company?.textContent?.trim() || 'Empresa',
-          };
-        }).filter(vaga => vaga.url),
-      maxAplicacoes
-    );
+    try {
+      return await page.$$eval(
+        '.job-card-container, .jobs-search-results__list-item', 
+        (cards, max) => 
+          cards.slice(0, max).map(card => {
+            const link = card.querySelector('a[href*="/jobs/view/"]') as HTMLAnchorElement;
+            const company = card.querySelector('.job-card-company-name, .artdeco-entity-lockup__subtitle') as HTMLElement;
+            const title = card.querySelector('.job-card-list__title, .artdeco-entity-lockup__title') as HTMLElement;
+            
+            return {
+              url: link?.href || '',
+              title: title?.textContent?.trim() || 'Vaga LinkedIn',
+              company: company?.textContent?.trim() || 'Empresa',
+            };
+          }).filter(vaga => vaga.url),
+        maxAplicacoes
+      );
+    } catch (error) {
+      this.logger.error('Erro ao coletar vagas:', error);
+      return [];
+    }
   }
 
   private async scrollLentamente(page: Page): Promise<void> {
@@ -901,13 +796,13 @@ export class LinkedInCandidatorService {
       await new Promise<void>((resolve) => {
         let total = 0;
         const timer = setInterval(() => {
-          window.scrollBy(0, 400);
-          total += 400;
-          if (total >= 2000) {
+          window.scrollBy(0, 300);
+          total += 300;
+          if (total >= 1500) {
             clearInterval(timer);
             resolve();
           }
-        }, 300);
+        }, 200);
       });
     });
   }
@@ -916,13 +811,5 @@ export class LinkedInCandidatorService {
     return new Promise(resolve => {
       setTimeout(resolve, ms);
     });
-  }
-
-  /**
-   * MÉTODO MANTIDO PARA COMPATIBILIDADE (mas não usado)
-   */
-  private prepararRespostasAutomaticas(mentorado: any, respostasConfig: RespostasChatConfig) {
-    // Método mantido para compatibilidade mas não utilizado
-    return {};
   }
 }
