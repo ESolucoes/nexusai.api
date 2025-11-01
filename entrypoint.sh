@@ -5,8 +5,8 @@ echo "🚀 Iniciando aplicação NexusAI..."
 
 # ---------- Configurações Playwright ----------
 export PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-export CHROMIUM_PATH=/usr/bin/chromium
-export PLAYWRIGHT_EXECUTABLE_PATH=/usr/bin/chromium
+export CHROMIUM_PATH=/ms-playwright/chromium-1084/chrome-linux/chrome
+export PLAYWRIGHT_EXECUTABLE_PATH=/ms-playwright/chromium-1084/chrome-linux/chrome
 
 echo "🔧 Configurações do Playwright:"
 echo "   - PLAYWRIGHT_BROWSERS_PATH: $PLAYWRIGHT_BROWSERS_PATH"
@@ -16,13 +16,15 @@ echo "   - NODE_ENV: $NODE_ENV"
 # ---------- Verifica Chromium ----------
 echo "🔍 Verificando instalação do Chromium..."
 
+# Lista possíveis caminhos do Chromium
+echo "📍 Procurando Chromium no sistema..."
+find / -name "*chromium*" -o -name "*chrome*" 2>/dev/null | grep -v "proc\|sys" | head -10
+
 if [ -f "$CHROMIUM_PATH" ]; then
-    echo "✅ Chromium do sistema encontrado: $($CHROMIUM_PATH --version | head -n1)"
+    echo "✅ Chromium encontrado: $($CHROMIUM_PATH --version | head -n1)"
 else
-    echo "❌ Chromium não encontrado em $CHROMIUM_PATH"
-    echo "📥 Instalando Chromium via Playwright..."
-    npx playwright install chromium
-    echo "✅ Chromium instalado via Playwright"
+    echo "⚠️ Chromium não encontrado no caminho configurado"
+    echo "🔧 Playwright vai usar o Chromium interno"
 fi
 
 # ---------- Teste do Playwright ----------
