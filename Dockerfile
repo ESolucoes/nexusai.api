@@ -1,5 +1,5 @@
 # ---------- build ----------
-FROM mcr.microsoft.com/playwright:v1.56.1-focal AS build
+FROM mcr.microsoft.com/playwright:v1.44.0-focal AS build
 WORKDIR /app
 
 # deps com cache
@@ -17,14 +17,15 @@ RUN npm run build
 RUN npm prune --omit=dev
 
 # ---------- runtime ----------
-FROM mcr.microsoft.com/playwright:v1.56.1-focal AS runtime
+FROM mcr.microsoft.com/playwright:v1.44.0-focal AS runtime
 WORKDIR /app
 
+# 🔥 CORRETO: Variáveis de ambiente com ENV
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV NODE_OPTIONS="--experimental-global-webcrypto --max_old_space_size=4096"
 
-# 🔥 CONFIGURAÇÕES SIMPLIFICADAS - Deixa o Playwright gerenciar automaticamente
+# 🔥 CONFIGURAÇÕES SIMPLIFICADAS
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 # instala dependências adicionais
@@ -42,10 +43,10 @@ COPY package*.json ./
 COPY entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
-# 🔥 VERIFICAÇÃO SIMPLIFICADA
-RUN echo "🔍 Verificando Playwright..." && \
-    npx playwright --version && \
-    echo "✅ Playwright verificado"
+# 🔥 FORÇA INSTALAÇÃO DOS BROWSERS COMPATÍVEIS
+RUN echo "📥 Instalando browsers compatíveis com Playwright..." && \
+    npx playwright install && \
+    npx playwright --version
 
 # dumb-init como init para melhor handling de signals
 ENTRYPOINT ["dumb-init", "--"]
