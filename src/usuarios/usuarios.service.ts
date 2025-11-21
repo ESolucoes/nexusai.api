@@ -9,22 +9,21 @@ import { ListarMentoresQueryDto } from './dto/listar-mentores.query.dto'
 import { GetMentoresPaginadoResponseDto, MentorUsuarioResumoDto } from './dto/get-mentores-paginado.dto'
 import { ListarMentoradosQueryDto } from './dto/listar-mentorados.query.dto'
 import { GetMentoradosPaginadoResponseDto, MentoradoUsuarioResumoDto } from './dto/get-mentorados-paginado.dto'
+import { ArquivosService } from '../arquivos/arquivos.service'
 
 @Injectable()
 export class UsuariosService {
   constructor(
     @InjectRepository(Usuario)
     private readonly usuariosRepo: Repository<Usuario>,
+    private readonly arquivosService: ArquivosService, // 🔥 ADICIONADO
   ) {}
 
+  // 🔥 CORREÇÃO: Usar o serviço de arquivos para construir URLs
   private buildAvatarUrl(path?: string | null): string | null {
     if (!path) return null
-    if (/^https?:\/\//i.test(path)) return path
-    const base = process.env.PUBLIC_BASE_URL || process.env.APP_URL || ''
-    if (!base) return path.startsWith('/') ? path : `/${path}`
-    const sep = base.endsWith('/') ? '' : '/'
-    const rel = path.startsWith('/') ? path.slice(1) : path
-    return `${base}${sep}${rel}`
+    // 🔥 CORREÇÃO: Usar URL absoluta em produção
+    return this.arquivosService.buildPublicUrl(path, { absolute: true })
   }
 
   async salvar(u: Usuario): Promise<Usuario> {
