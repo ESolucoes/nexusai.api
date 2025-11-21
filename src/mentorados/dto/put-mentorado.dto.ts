@@ -1,5 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString, Length, IsDateString, IsUrl, IsNumber, IsUUID } from 'class-validator';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  Length,
+  IsDateString,
+  IsNumber,
+  IsUUID,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class PutMentoradoDto {
@@ -16,8 +24,16 @@ export class PutMentoradoDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @Length(3, 20) rg?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @Length(11, 14) cpf?: string;
 
-  @ApiPropertyOptional() @IsOptional() @IsString() @Length(2, 120) nomePai?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @Length(2, 120) nomeMae?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Length(2, 120)
+  nomePai?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Length(2, 120)
+  nomeMae?: string;
 
   @ApiPropertyOptional({ description: 'YYYY-MM-DD' })
   @IsOptional()
@@ -25,14 +41,39 @@ export class PutMentoradoDto {
   dataNascimento?: string;
 
   @ApiPropertyOptional() @IsOptional() @IsString() @Length(2, 150) rua?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @Length(1, 20) numero?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @Length(0, 120) complemento?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Length(1, 20)
+  numero?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Length(0, 120)
+  complemento?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @Length(8, 10) cep?: string;
 
-  @ApiPropertyOptional() @IsOptional() @IsString() @Length(2, 120) cargoObjetivo?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Length(2, 120)
+  cargoObjetivo?: string;
 
-  @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsNumber() pretensaoClt?: number;
-  @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsNumber() pretensaoPj?: number;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  pretensaoClt?: number;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  pretensaoPj?: number;
 
-  @ApiPropertyOptional() @IsOptional() @IsUrl() linkedin?: string;
+  // CORREÇÃO: LinkedIn agora é opcional
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Length(0, 255)
+  linkedin?: string;
 }

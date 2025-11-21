@@ -24,6 +24,7 @@ import { CriarMentoradoCronograma1710000000013 } from './migrations/171000000001
 import { CriarMentoradosCandidaturas1710000000014 } from './migrations/1710000000014-CriarMentoradosCandidaturas';
 import { AdicionarCamposCandidaturas1710000000015 } from './migrations/1710000000015-AdicionarCamposCandidaturas';
 import { CriarVagasAplicadas1710000000016 } from './migrations/1710000000016-CriarVagasAplicadas'; // NOVA MIGRATION
+import { AlterarLinkedinNullable1710000000017 } from './migrations/1710000000017-AlterarLinkedinNullable';
 
 export default new DataSource({
   type: 'postgres',
@@ -51,6 +52,7 @@ export default new DataSource({
     CriarMentoradosCandidaturas1710000000014,
     AdicionarCamposCandidaturas1710000000015,
     CriarVagasAplicadas1710000000016, // ADICIONE ESTA LINHA
+    AlterarLinkedinNullable1710000000017,
   ],
   synchronize: false,
   logging: false,

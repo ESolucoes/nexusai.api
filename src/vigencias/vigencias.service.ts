@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not, IsNull } from 'typeorm';
 import { Vigencia } from './vigencia.entity';
@@ -35,7 +39,10 @@ export class VigenciasService {
   }
 
   async listarPorUsuario(usuarioId: string): Promise<Vigencia[]> {
-    return this.vigRepo.find({ where: { usuarioId }, order: { inicio: 'DESC' } });
+    return this.vigRepo.find({
+      where: { usuarioId },
+      order: { inicio: 'DESC' },
+    });
   }
 
   async obterAtiva(usuarioId: string): Promise<Vigencia | null> {
@@ -59,13 +66,30 @@ export class VigenciasService {
 
   async criarPorEmail(dto: PostVigenciaDto): Promise<Vigencia> {
     const email = dto.email.trim().toLowerCase();
-    const usuario = await this.usuariosRepo.findOne({ where: { email } });
-    if (!usuario) throw new NotFoundException('Usuário não encontrado pelo e-mail informado');
+    console.log('📧 Criando vigência para email:', email);
 
-    return this.criar(usuario.id, { inicio: dto.inicio, fim: dto.fim });
+    const usuario = await this.usuariosRepo.findOne({ where: { email } });
+    if (!usuario) {
+      console.log('❌ Usuário não encontrado para email:', email);
+      throw new NotFoundException(
+        'Usuário não encontrado pelo e-mail informado',
+      );
+    }
+
+    console.log('✅ Usuário encontrado:', usuario.id, usuario.email);
+    const vigencia = await this.criar(usuario.id, {
+      inicio: dto.inicio,
+      fim: dto.fim,
+    });
+    console.log('✅ Vigência criada com ID:', vigencia.id);
+
+    return vigencia;
   }
 
-  async criar(usuarioId: string, dto: { inicio: string; fim?: string }): Promise<Vigencia> {
+  async criar(
+    usuarioId: string,
+    dto: { inicio: string; fim?: string },
+  ): Promise<Vigencia> {
     const inicio = new Date(dto.inicio);
     const fim = dto.fim ? new Date(dto.fim) : null;
 
@@ -74,7 +98,10 @@ export class VigenciasService {
 
     if (!fim) {
       const jaAtiva = await this.obterAtiva(usuarioId);
-      if (jaAtiva) throw new BadRequestException('Já existe vigência ativa para este usuário');
+      if (jaAtiva)
+        throw new BadRequestException(
+          'Já existe vigência ativa para este usuário',
+        );
     }
 
     const obj = this.vigRepo.create({ usuarioId, inicio, fim });
@@ -86,7 +113,8 @@ export class VigenciasService {
     if (!v) throw new NotFoundException('Vigência não encontrada');
 
     const novoInicio = dto.inicio ? new Date(dto.inicio) : v.inicio;
-    const novoFim = dto.fim === undefined ? v.fim : dto.fim ? new Date(dto.fim) : null;
+    const novoFim =
+      dto.fim === undefined ? v.fim : dto.fim ? new Date(dto.fim) : null;
 
     if (dto.inicio) this.assertInicioValido(novoInicio);
     this.assertFimValido(novoInicio, novoFim ?? undefined);
@@ -95,7 +123,10 @@ export class VigenciasService {
       const outraAtiva = await this.vigRepo.findOne({
         where: { usuarioId: v.usuarioId, fim: IsNull(), id: Not(v.id) },
       });
-      if (outraAtiva) throw new BadRequestException('Já existe outra vigência ativa para este usuário');
+      if (outraAtiva)
+        throw new BadRequestException(
+          'Já existe outra vigência ativa para este usuário',
+        );
     }
 
     v.inicio = novoInicio;
@@ -103,18 +134,23 @@ export class VigenciasService {
     return this.vigRepo.save(v);
   }
 
-  async toggle(usuarioId: string, ativo: boolean): Promise<{ status: 'ativada' | 'desativada' }> {
+  async toggle(
+    usuarioId: string,
+    ativo: boolean,
+  ): Promise<{ status: 'ativada' | 'desativada' }> {
     const agora = new Date();
     const atual = await this.obterAtiva(usuarioId);
 
     if (!ativo) {
-      if (!atual) throw new BadRequestException('Não há vigência ativa para desativar');
+      if (!atual)
+        throw new BadRequestException('Não há vigência ativa para desativar');
       atual.fim = agora;
       await this.vigRepo.save(atual);
       return { status: 'desativada' };
     }
 
-    if (atual) throw new BadRequestException('Usuário já possui vigência ativa');
+    if (atual)
+      throw new BadRequestException('Usuário já possui vigência ativa');
     const nova = this.vigRepo.create({ usuarioId, inicio: agora, fim: null });
     await this.vigRepo.save(nova);
     return { status: 'ativada' };

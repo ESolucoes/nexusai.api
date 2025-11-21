@@ -46,25 +46,27 @@ export class MentoradosService {
 
   async buscarPorId(id: string): Promise<Mentorado> {
     const m = await this.repo.findOne({ where: { id } });
-    if (!m) throw new NotFoundException('Mentorado nÃ£o encontrado');
+    if (!m) throw new NotFoundException('Mentorado não encontrado');
     return m;
   }
 
   async criar(dto: PostMentoradoDto): Promise<Mentorado> {
     const ja = await this.repo.findOne({ where: { usuarioId: dto.usuarioId } });
-    if (ja) throw new ConflictException('UsuÃ¡rio jÃ¡ possui mentorado vinculado');
+    if (ja)
+      throw new ConflictException('Usuário já possui mentorado vinculado');
 
-    // mentorId Ã© obrigatÃ³rio no POST; valida existÃªncia
+    // mentorId é obrigatório no POST; valida existência
     const mentor = await this.mentoresService
       .buscarPorId(dto.mentorId)
       .catch(() => null);
-    if (!mentor) throw new BadRequestException('Mentor informado nÃ£o existe');
+    if (!mentor) throw new BadRequestException('Mentor informado não existe');
 
     const ment = this.repo.create({
       ...dto,
       complemento: dto.complemento ?? null,
       pretensaoClt: String(dto.pretensaoClt ?? 0),
       pretensaoPj: String(dto.pretensaoPj ?? 0),
+      linkedin: dto.linkedin ?? null, // CORREÇÃO: Permite LinkedIn null
     });
     return this.repo.save(ment);
   }
@@ -80,7 +82,8 @@ export class MentoradosService {
         const mentor = await this.mentoresService
           .buscarPorId(dto.mentorId)
           .catch(() => null);
-        if (!mentor) throw new BadRequestException('Mentor informado nÃ£o existe');
+        if (!mentor)
+          throw new BadRequestException('Mentor informado não existe');
         m.mentorId = dto.mentorId;
       }
     }
@@ -96,16 +99,18 @@ export class MentoradosService {
     if (dto.complemento !== undefined) m.complemento = dto.complemento ?? null;
     if (dto.cep !== undefined) m.cep = dto.cep;
     if (dto.cargoObjetivo !== undefined) m.cargoObjetivo = dto.cargoObjetivo;
-    if (dto.pretensaoClt !== undefined) m.pretensaoClt = String(dto.pretensaoClt);
+    if (dto.pretensaoClt !== undefined)
+      m.pretensaoClt = String(dto.pretensaoClt);
     if (dto.pretensaoPj !== undefined) m.pretensaoPj = String(dto.pretensaoPj);
-    if (dto.linkedin !== undefined) m.linkedin = dto.linkedin;
+    if (dto.linkedin !== undefined) m.linkedin = dto.linkedin ?? null; // CORREÇÃO: Permite LinkedIn null
 
     return this.repo.save(m);
   }
 
   async deletar(id: string): Promise<{ sucesso: boolean }> {
     const res = await this.repo.delete(id);
-    if (res.affected === 0) throw new NotFoundException('Mentorado nÃ£o encontrado');
+    if (res.affected === 0)
+      throw new NotFoundException('Mentorado não encontrado');
     return { sucesso: true };
   }
 }
