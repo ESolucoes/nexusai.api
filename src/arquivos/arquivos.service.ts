@@ -8,9 +8,7 @@ const stripEndSlashes = (s: string) => s.replace(/\/+$/, '');
 @Injectable()
 export class ArquivosService {
   getPublicRootDir() {
-    const p =
-      process.env.UPLOADS_PUBLIC_DIR ||
-      join(process.cwd(), 'uploads', 'public');
+    const p = process.env.UPLOADS_PUBLIC_DIR || join(process.cwd(), 'uploads');
     return resolve(p);
   }
 
@@ -44,12 +42,10 @@ export class ArquivosService {
       .replace(/^\/+/, '');
   }
 
-  // 🔥 CORREÇÃO DEFINITIVA: força o uso do APP_PUBLIC_URL em produção
   private absoluteFromReq(req?: Request) {
     const envBase = process.env.APP_PUBLIC_URL;
     if (envBase) return stripEndSlashes(envBase);
 
-    // fallback (somente para desenvolvimento local)
     const proto =
       (req?.headers['x-forwarded-proto'] as string)?.split(',')[0]?.trim() ||
       req?.protocol ||
