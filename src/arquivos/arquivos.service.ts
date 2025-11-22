@@ -23,7 +23,7 @@ export class ArquivosService {
 
   getPublicBaseUrl() {
     const base = process.env.APP_PUBLIC_URL;
-    return stripEndSlashes(base);
+    return stripEndSlashes(base ?? '');
   }
 
   ensureDir(relativePath: string) {
