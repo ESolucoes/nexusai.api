@@ -22,7 +22,7 @@ export class ArquivosService {
   }
 
   getPublicBaseUrl() {
-    const base = process.env.APP_PUBLIC_URL || 'http://localhost:3000';
+    const base = process.env.APP_PUBLIC_URL;
     return stripEndSlashes(base);
   }
 
