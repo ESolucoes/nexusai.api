@@ -6,7 +6,6 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join, resolve } from 'path';
 
-// Domínio
 import { AgentesModule } from './agentes/agentes.module';
 import { ArquivosModule } from './arquivos/arquivos.module';
 import { AutenticacaoModule } from './autenticacao/autenticacao.module';
@@ -18,14 +17,8 @@ import { UsuariosModule } from './usuarios/usuarios.module';
 import { VagasLinksModule } from './vagas-links/vagas-links.module';
 import { VigenciasModule } from './vigencias/vigencias.module';
 import { UsuariosAvatarModule } from './usuarios-avatar/usuarios-avatar.module';
-
-// Classificação simples de SSI (sem persistência)
 import { MentoradoSsiModule } from './mentorado-ssi/mentorado-ssi.module';
-
-// Novo: Cronograma do Mentorado (semanas + rotina fixa)
 import { MentoradoCronogramaModule } from './mentorado-cronograma/mentorado-cronograma.module';
-
-// >>> NOVO MÓDULO <<<
 import { MentoradosCandidaturaModule } from './mentorados-candidatura/mentorados-candidatura.module';
 
 @Module({
@@ -34,7 +27,8 @@ import { MentoradosCandidaturaModule } from './mentorados-candidatura/mentorados
 
     ServeStaticModule.forRoot({
       rootPath: resolve(
-        process.env.UPLOADS_PUBLIC_DIR ?? join(process.cwd(), 'uploads', 'public'),
+        process.env.UPLOADS_PUBLIC_DIR ??
+          join(process.cwd(), 'uploads', 'public'),
       ),
       serveRoot: '/uploads',
       exclude: ['/uploads/private'],
@@ -60,9 +54,16 @@ import { MentoradosCandidaturaModule } from './mentorados-candidatura/mentorados
           host: process.env.MAIL_HOST,
           port: Number(process.env.MAIL_PORT ?? 587),
           secure: process.env.MAIL_SECURE === 'true',
-          auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS },
+          auth: {
+            user: process.env.MAIL_USER,
+            pass: process.env.MAIL_PASS,
+          },
         },
-        defaults: { from: process.env.MAIL_FROM ?? '"Suporte" <no-reply@nexusai.local>' },
+        defaults: {
+          from:
+            process.env.MAIL_FROM ??
+            '"Suporte" <no-reply@nexusai.local>',
+        },
         template: {
           dir: join(process.cwd(), 'templates'),
           adapter: new HandlebarsAdapter(),
@@ -71,7 +72,6 @@ import { MentoradosCandidaturaModule } from './mentorados-candidatura/mentorados
       }),
     }),
 
-    // ===== módulos existentes =====
     AgentesModule,
     ArquivosModule,
     AutenticacaoModule,
@@ -83,12 +83,8 @@ import { MentoradosCandidaturaModule } from './mentorados-candidatura/mentorados
     UsuariosAvatarModule,
     VagasLinksModule,
     VigenciasModule,
-
-    // novos
     MentoradoSsiModule,
     MentoradoCronogramaModule,
-
-    // >>> Módulo de candidaturas <<<
     MentoradosCandidaturaModule,
   ],
 })
