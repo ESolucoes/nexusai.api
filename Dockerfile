@@ -1,54 +1,66 @@
-# ---------- build ----------
+# ============================================================
+#                       BUILD STAGE
+# ============================================================
 FROM mcr.microsoft.com/playwright:v1.44.0-focal AS build
+
 WORKDIR /app
 
-# deps com cache
+# Dependências com cache
 COPY package*.json ./
 RUN npm ci
 
-# configs do Nest/TS
+# Configs NestJS/TS
 COPY nest-cli.json tsconfig.json tsconfig.build.json ./
 
-# código fonte
+# Código fonte
 COPY src ./src
 
-# build e slim de devDeps
+# Build (gera /dist)
 RUN npm run build
+
+# Remove devDependencies para runtime menor
 RUN npm prune --omit=dev
 
-# ---------- runtime ----------
+
+# ============================================================
+#                       RUNTIME STAGE
+# ============================================================
 FROM mcr.microsoft.com/playwright:v1.44.0-focal AS runtime
+
 WORKDIR /app
 
-# 🔥 CORRETO: Variáveis de ambiente com ENV
+# -------- VARIÁVEIS DE AMBIENTE --------
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV NODE_OPTIONS="--experimental-global-webcrypto --max_old_space_size=4096"
-
-# 🔥 CONFIGURAÇÕES SIMPLIFICADAS
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# instala dependências adicionais
+# -------- PACOTES NECESSÁRIOS --------
 RUN apt-get update && \
-    apt-get install -y dumb-init && \
+    apt-get install -y dumb-init nginx && \
     rm -rf /var/lib/apt/lists/*
 
-# cria diretório para aplicação
+# -------- COPIA ARQUIVOS DA BUILD --------
 RUN mkdir -p /app/dist /app/node_modules
-
-# copia build e node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules ./node_modules
 COPY package*.json ./
+
+# -------- ENTRYPOINT --------
 COPY entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
-# 🔥 FORÇA INSTALAÇÃO DOS BROWSERS COMPATÍVEIS
-RUN echo "📥 Instalando browsers compatíveis com Playwright..." && \
+# -------- NGINX (caso você use nginx.conf) --------
+# Coloque seu arquivo em: /docker/nginx.conf
+# Ele será copiado automaticamente
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+
+# -------- INSTALA PLAYWRIGHT --------
+RUN echo "📥 Instalando browsers Playwright..." && \
     npx playwright install && \
     npx playwright --version
 
-# dumb-init como init para melhor handling de signals
+# -------- ENTRYPOINT PRINCIPAL --------
 ENTRYPOINT ["dumb-init", "--"]
 
 EXPOSE 3000
