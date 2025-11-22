@@ -22,8 +22,8 @@ export class ArquivosService {
   }
 
   getPublicBaseUrl() {
-    const base = process.env.APP_PUBLIC_URL;
-    return stripEndSlashes(base ?? '');
+    const base = process.env.APP_PUBLIC_URL ?? '';
+    return stripEndSlashes(base);
   }
 
   ensureDir(relativePath: string) {
@@ -44,15 +44,22 @@ export class ArquivosService {
       .replace(/^\/+/, '');
   }
 
+  // 🔥 CORREÇÃO DEFINITIVA: força o uso do APP_PUBLIC_URL em produção
   private absoluteFromReq(req?: Request) {
+    const envBase = process.env.APP_PUBLIC_URL;
+    if (envBase) return stripEndSlashes(envBase);
+
+    // fallback (somente para desenvolvimento local)
     const proto =
       (req?.headers['x-forwarded-proto'] as string)?.split(',')[0]?.trim() ||
       req?.protocol ||
       'http';
+
     const host =
       (req?.headers['x-forwarded-host'] as string)?.split(',')[0]?.trim() ||
       req?.get?.('host') ||
       'localhost:3000';
+
     return `${proto}://${host}`;
   }
 
