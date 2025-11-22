@@ -25,15 +25,15 @@ import { MentoradosCandidaturaModule } from './mentorados-candidatura/mentorados
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
 
-    ServeStaticModule.forRoot({
-      rootPath: resolve(
-        process.env.UPLOADS_PUBLIC_DIR ??
-          join(process.cwd(), 'uploads', 'public'),
-      ),
-      serveRoot: '/uploads',
-      exclude: ['/uploads/private'],
-      serveStaticOptions: { index: false, redirect: false },
-    }),
+    // ServeStaticModule.forRoot({
+    //   rootPath: resolve(
+    //     process.env.UPLOADS_PUBLIC_DIR ??
+    //       join(process.cwd(), 'uploads', 'public'),
+    //   ),
+    //   serveRoot: '/uploads',
+    //   exclude: ['/uploads/private'],
+    //   serveStaticOptions: { index: false, redirect: false },
+    // }),
 
     TypeOrmModule.forRootAsync({
       useFactory: () => ({
