@@ -100,8 +100,8 @@ export class UsuariosController {
 
   // 🔥 NOVA ROTA ADICIONADA - GET PARA AVATAR
   @Get(':id/avatar')
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  // @ApiBearerAuth()
+  // @UseGuards(JwtAuthGuard)
   @ApiOkResponse({ 
     schema: { 
       example: { 
