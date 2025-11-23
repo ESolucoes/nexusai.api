@@ -9,6 +9,7 @@ import {
   Put,
   UseGuards,
   Query,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -97,6 +98,30 @@ export class UsuariosController {
     return this.usuariosService.contarMentorados();
   }
 
+  // 🔥 NOVA ROTA ADICIONADA - GET PARA AVATAR
+  @Get(':id/avatar')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOkResponse({ 
+    schema: { 
+      example: { 
+        avatarUrl: "https://processosniper.com.br/uploads/images/avatars/arquivo.jpg",
+        avatarPath: "images/avatars/arquivo.jpg" 
+      } 
+    } 
+  })
+  async getAvatar(@Param('id') id: string) {
+    const user = await this.usuariosService.buscarPorId(id);
+    if (!user || !user.avatarPath) {
+      throw new NotFoundException('Avatar não encontrado');
+    }
+    
+    return {
+      avatarUrl: this.arquivosService.buildPublicUrl(user.avatarPath, { absolute: true }),
+      avatarPath: user.avatarPath
+    };
+  }
+
   @Get(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
@@ -156,7 +181,7 @@ export class UsuariosController {
     }
 
     const avatarUrl = u.avatarPath
-      ? this.arquivosService.buildPublicUrl(u.avatarPath)
+      ? this.arquivosService.buildPublicUrl(u.avatarPath, { absolute: true })
       : null;
 
     return {
