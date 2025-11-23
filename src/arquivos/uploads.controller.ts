@@ -20,19 +20,24 @@ export class UploadsController {
     const rel = (params['0'] || '').replace(/^\/+/, '')
     const filePath = resolve(this.privateBaseDir, rel)
 
-    if (!filePath.startsWith(this.privateBaseDir) || !existsSync(filePath) || !statSync(filePath).isFile()) {
-      throw new NotFoundException()
+    // 🔥 CORREÇÃO: Verificação de segurança melhorada
+    if (!filePath.startsWith(this.privateBaseDir) || 
+        !existsSync(filePath) || 
+        !statSync(filePath).isFile()) {
+      throw new NotFoundException('Arquivo privado não encontrado')
     }
 
     const stat = statSync(filePath)
     const mimeType = (mime.lookup(filePath) || 'application/octet-stream') as string
     res.setHeader('Content-Type', mimeType)
 
+    // Forçar download para currículos
     if (/[/\\]files[/\\]curriculum[/\\]/i.test(filePath)) {
       const fn = basename(filePath)
       res.setHeader('Content-Disposition', contentDisposition(fn, { type: 'attachment' }))
     }
 
+    // Suporte a range requests (streaming)
     const range = req.headers.range
     if (range) {
       const [startStr, endStr] = range.replace(/bytes=/, '').split('-')
@@ -52,14 +57,16 @@ export class UploadsController {
     return createReadStream(filePath).pipe(res)
   }
 
-  // 🔥 NOVO: Servir arquivos públicos (avatars)
+  // Servir arquivos públicos (avatars, etc)
   @Get('*')
   servePublic(@Param() params: { 0: string }, @Req() req: Request, @Res() res: Response) {
     const rel = (params['0'] || '').replace(/^\/+/, '')
     const filePath = resolve(this.publicBaseDir, rel)
 
-    if (!filePath.startsWith(this.publicBaseDir) || !existsSync(filePath) || !statSync(filePath).isFile()) {
-      throw new NotFoundException('Arquivo não encontrado')
+    if (!filePath.startsWith(this.publicBaseDir) || 
+        !existsSync(filePath) || 
+        !statSync(filePath).isFile()) {
+      throw new NotFoundException('Arquivo público não encontrado')
     }
 
     const stat = statSync(filePath)

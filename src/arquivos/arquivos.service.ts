@@ -8,14 +8,12 @@ const stripEndSlashes = (s: string) => s.replace(/\/+$/, '');
 @Injectable()
 export class ArquivosService {
   getPublicRootDir() {
-    const p = process.env.UPLOADS_PUBLIC_DIR || join(process.cwd(), 'uploads');
+    const p = process.env.UPLOADS_PUBLIC_DIR || join(process.cwd(), 'uploads', 'public');
     return resolve(p);
   }
 
   getPrivateRootDir() {
-    const p =
-      process.env.UPLOADS_PRIVATE_DIR ||
-      join(process.cwd(), 'uploads', 'private');
+    const p = process.env.UPLOADS_PRIVATE_DIR || join(process.cwd(), 'uploads', 'private');
     return resolve(p);
   }
 
@@ -64,8 +62,14 @@ export class ArquivosService {
     opts?: { absolute?: boolean; req?: Request },
   ) {
     const key = storageKey.replace(/^\/+/, '').replace(/\\/g, '/');
+    
+    // 🔥 CORREÇÃO CRÍTICA: Em produção, sempre usar URL absoluta
+    if (process.env.NODE_ENV === 'production' || opts?.absolute) {
+      const baseUrl = this.getPublicBaseUrl();
+      return `${baseUrl}/uploads/${key}`;
+    }
+    
     const rel = `/uploads/${key}`;
-    if (opts?.absolute) return `${this.absoluteFromReq(opts.req)}${rel}`;
     return rel;
   }
 
@@ -74,8 +78,14 @@ export class ArquivosService {
     opts?: { absolute?: boolean; req?: Request },
   ) {
     const key = storageKey.replace(/^\/+/, '').replace(/\\/g, '/');
+    
+    // 🔥 CORREÇÃO CRÍTICA: Em produção, sempre usar URL absoluta
+    if (process.env.NODE_ENV === 'production' || opts?.absolute) {
+      const baseUrl = this.getPublicBaseUrl();
+      return `${baseUrl}/uploads/private/${key}`;
+    }
+    
     const rel = `/uploads/private/${key}`;
-    if (opts?.absolute) return `${this.absoluteFromReq(opts.req)}${rel}`;
     return rel;
   }
 }
